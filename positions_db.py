@@ -1,0 +1,61 @@
+# positions_db.py
+import sqlite3
+from pathlib import Path
+
+DB_PATH = Path("market_data.db")
+
+def init_bot_state_table():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_state (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            usd_balance REAL DEFAULT 0,
+            btc_balance REAL DEFAULT 0,
+            entry_price REAL DEFAULT 0,
+            stop_loss REAL DEFAULT 0,
+            take_profit REAL DEFAULT 0,
+            fraction REAL DEFAULT 0.3,
+            risk_per_trade REAL DEFAULT 0.02
+        )
+    ''')
+    # Если таблица пустая — вставляем строку с дефолтами
+    cursor.execute("SELECT COUNT(*) FROM bot_state")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute('''
+            INSERT INTO bot_state (id, usd_balance, btc_balance, entry_price, stop_loss, take_profit, fraction, risk_per_trade)
+            VALUES (1, 0, 0, 0, 0, 0, 0.3, 0.02)
+        ''')
+    conn.commit()
+    conn.close()
+
+def load_bot_state():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT usd_balance, btc_balance, entry_price, stop_loss, take_profit, fraction, risk_per_trade
+        FROM bot_state WHERE id = 1
+    ''')
+    row = cursor.fetchone()
+    conn.close()
+    return {
+        "usd_balance": row[0],
+        "btc_balance": row[1],
+        "entry_price": row[2],
+        "stop_loss": row[3],
+        "take_profit": row[4],
+        "fraction": row[5],
+        "risk_per_trade": row[6],
+    }
+
+def save_bot_state(usd_balance, btc_balance, entry_price, stop_loss, take_profit, fraction, risk_per_trade):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE bot_state
+        SET usd_balance = ?, btc_balance = ?, entry_price = ?, stop_loss = ?, take_profit = ?,
+            fraction = ?, risk_per_trade = ?
+        WHERE id = 1
+    ''', (usd_balance, btc_balance, entry_price, stop_loss, take_profit, fraction, risk_per_trade))
+    conn.commit()
+    conn.close()
