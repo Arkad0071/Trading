@@ -7,3 +7,7 @@ signals.db
 best_model.h5
 scaler.pkl
 lstm_model.h5
+*.db
+*.py[cod]
+.idea/
+*.iml
