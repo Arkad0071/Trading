@@ -3,6 +3,7 @@ import os
 import logging
 import joblib
 import numpy as np
+from datetime import time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 from utils.config import TOKEN, BYBIT_API_KEY, BYBIT_API_SECRET
@@ -339,6 +340,30 @@ async def train_command(update: Update, context: CallbackContext):
         logger.error(f"Ошибка в команде /train: {e}")
         await update.message.reply_text(f"Ошибка при обучении: {e}")
 
+async def retrain_callback(context: CallbackContext):
+    logger.info("=== Начинаю автоматическое переобучение ===")
+    # 1) Получаем и готовим данные
+    df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+    if df.empty:
+        logger.error("Retrain: не удалось скачать данные")
+        return
+    df = calculate_indicators(df)
+    features = ["close", "volume", "RSI", "MACD", "MACD_signal", "ATR"]
+    seq_len = 50
+    X, y, scaler = prepare_features(df, features=features, sequence_length=seq_len)
+    if len(X) == 0:
+        logger.error("Retrain: недостаточно данных для обучения")
+        return
+
+    # 2) Обучаем модель
+    model = LSTMModel(sequence_length=seq_len, num_features=len(features))
+    # не будем отправлять в чат, только логируем прогресс
+    model.train(X, y, epochs=10, batch_size=32)
+    model.save_model("lstm_model.h5")
+    joblib.dump(scaler, "scaler.pkl")
+
+    logger.info("=== Переобучение завершено ===")
+
 
 # Пока оставляем простую команду /backtest как пример (пока не до конца реализован)
 async def backtest_command(update: Update, context: CallbackContext):
@@ -456,6 +481,14 @@ def main():
     application.add_handler(CommandHandler("monitor", start_monitor))
     application.add_handler(CommandHandler("stop_monitor", stop_monitor))
     application.add_handler(CommandHandler("backtest_report", backtest_report))
+
+    # планируем retrain_callback на 00:00 UTC каждый день
+    application.job_queue.run_daily(
+        retrain_callback,
+        time=time(hour=0, minute=0, second=0),
+        name="daily_retrain"
+    )
+
     logger.info("Telegram-бот запущен.")
     application.run_polling()
 
