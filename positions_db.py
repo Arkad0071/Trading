@@ -1,6 +1,7 @@
 # positions_db.py
 import sqlite3
 from pathlib import Path
+from datetime import datetime
 
 DB_PATH = Path("market_data.db")
 
@@ -28,6 +29,32 @@ def init_bot_state_table():
         ''')
     conn.commit()
     conn.close()
+
+def init_logs_table():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # таблица для записей прогнозов
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS predictions (
+            ts           TEXT,
+            signal       TEXT,
+            probability  REAL,
+            price        REAL
+        )
+    """)
+    # таблица для записей симулированных/реальных сделок
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS executed_trades (
+            ts             TEXT,
+            entry_price    REAL,
+            exit_price     REAL,
+            position_size  REAL,
+            profit         REAL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
 
 def load_bot_state():
     conn = sqlite3.connect(DB_PATH)
@@ -59,3 +86,31 @@ def save_bot_state(usd_balance, btc_balance, entry_price, stop_loss, take_profit
     ''', (usd_balance, btc_balance, entry_price, stop_loss, take_profit, fraction, risk_per_trade))
     conn.commit()
     conn.close()
+
+def log_prediction(signal: str, probability: float, price: float):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO predictions VALUES (?,?,?,?)", (
+        datetime.utcnow().isoformat(),
+        signal,
+        probability,
+        price
+    ))
+    conn.commit()
+    conn.close()
+
+def log_trade(entry_price: float, exit_price: float, position_size: float, profit: float):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT INTO executed_trades VALUES (?,?,?,?,?)", (
+        datetime.utcnow().isoformat(),
+        entry_price,
+        exit_price,
+        position_size,
+        profit
+    ))
+    conn.commit()
+    conn.close()
+
+init_bot_state_table()
+init_logs_table()

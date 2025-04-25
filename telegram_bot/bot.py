@@ -16,6 +16,8 @@ from trading.risk_manager import calculate_position_size, calculate_sl_tp_levels
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from positions_db import load_bot_state, save_bot_state
 from positions_db import init_bot_state_table
+from positions_db import log_prediction, log_trade
+from positions_db import log_trade
 from telegram.ext import JobQueue, Job
 import io
 import matplotlib.pyplot as plt
@@ -127,6 +129,8 @@ async def monitor_callback(context: CallbackContext):
         elif prob < 45:
             signal = "SELL"
 
+        log_prediction(signal, prob, entry_price)
+
         # ─── 5) Проверяем, изменился ли сигнал ────────────────────────
         prev = context.chat_data.get("last_signal")
         if signal == prev:
@@ -204,7 +208,6 @@ async def chart_command(update: Update, context: CallbackContext):
             await update.message.reply_text("Недостаточно данных для прогноза.")
             return
 
-        # 4. Загружаем scaler и модель
         # Загружаем scaler (предполагается, что он был сохранён в /train)
         if not os.path.exists("scaler.pkl"):
             await update.message.reply_text("Scaler не найден. Сначала выполните /train.")
@@ -381,6 +384,14 @@ async def backtest_report(update: Update, context: CallbackContext):
     # 2) Прогоним бэктест
     backtester = Backtester(initial_balance=10000, commission_rate=0.001)
     trades = backtester.run_backtest(df, signal_column="signal")
+    # Логируем все сделки из бэктеста
+    for t in trades:
+        log_trade(
+            entry_price=t["entry_price"],
+            exit_price=t["exit_price"],
+            position_size=t["position_size"],
+            profit=t["profit"]
+        )
 
     # 3) Собираем equity-кривую
     equity = [backtester.initial_balance] + [t["balance"] for t in trades]
