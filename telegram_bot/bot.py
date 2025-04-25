@@ -66,13 +66,13 @@ async def start_monitor(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
 
     # Проверяем, что такого Job ещё нет
-    current_jobs = context.job_queue.get_jobs_by_name(str(chat_id))
+    current_jobs = context.application.job_queue.get_jobs_by_name(str(chat_id))
     if current_jobs:
         await update.message.reply_text("Мониторинг уже запущен.")
         return
 
     # Запускаем задачу: каждые 15 мин вызываем функцию monitor_callback
-    context.job_queue.run_repeating(
+    context.application.job_queue.run_repeating(
         monitor_callback,
         interval=15 * 60,      # 15 минут
         first=0,               # запуск сразу
@@ -84,7 +84,7 @@ async def start_monitor(update: Update, context: CallbackContext):
 async def stop_monitor(update: Update, context: CallbackContext):
     """Останавливает фоновые проверки."""
     chat_id = update.effective_chat.id
-    jobs = context.job_queue.get_jobs_by_name(str(chat_id))
+    jobs = context.application.job_queue.get_jobs_by_name(str(chat_id))
     if not jobs:
         await update.message.reply_text("Мониторинг не запущен.")
         return
