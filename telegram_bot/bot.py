@@ -24,6 +24,13 @@ import io
 import matplotlib.pyplot as plt
 from collections import Counter
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s:%(message)s",
+)
+
+logger = logging.getLogger(__name__)
+
 
 # Импортируем обратные вызовы для TensorFlow (если необходимо)
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
@@ -277,6 +284,19 @@ async def chart_command(update: Update, context: CallbackContext):
         elif probability < threshold_sell:
             signal = "SELL"
 
+            # ————— Логируем прогноз в БД и в системный лог —————
+            log_prediction(
+                signal=signal,
+                probability=probability,
+                entry_price=entry_price
+            )
+            logger.info(
+                f"[PREDICTION] signal={signal} "
+                f"prob={probability:.2f}% "
+                f"entry_price={entry_price:.2f}"
+            )
+            # ——————————————————————————————————————————————
+
         # 7. Формируем итоговое сообщение
         message = (
             f"🔎 Прогноз модели:\n"
@@ -390,6 +410,25 @@ async def backtest_command(update: Update, context: CallbackContext):
         backtester = Backtester(initial_balance=10000, commission_rate=0.001)
         trades = backtester.run_backtest(df, signal_column="signal")
 
+        # ————— Логируем каждую симулированную сделку в БД и в системный лог —————
+        for i, t in enumerate(trades, start=1):
+            log_trade(
+                entry_price=t["entry_price"],
+                exit_price=t["exit_price"],
+                position_size=t["position_size"],
+                profit=t["profit"]
+            )
+            logger.info(
+                f"[BACKTEST TRADE #{i}] "
+                f"entry={t['entry_price']:.2f} "
+                f"exit={t['exit_price']:.2f} "
+                f"size={t['position_size']:.6f} "
+                f"profit={t['profit']:.2f} "
+                f"balance={t['balance']:.2f} "
+                f"exit_type={t.get('exit_type', '-')}"
+            )
+        # ——————————————————————————————————————————————————————————————
+
         # Формируем отчет по бэктестингу
         report = f"Бэктест завершен.\nИтоговый баланс: {backtester.balance:.2f}\nКоличество сделок: {len(trades)}"
         await update.message.reply_text(report)
@@ -435,6 +474,14 @@ async def backtest_report(update: Update, context: CallbackContext):
     gross_win  = sum(p for p in profits if p > 0)
     gross_loss = -sum(p for p in profits if p < 0)
     pf = gross_win / gross_loss if gross_loss > 0 else float("inf")
+
+    logger.info(
+        f"[BACKTEST SUMMARY] "
+        f"final_balance={backtester.balance:.2f} "
+        f"trades={len(trades)} "
+        f"max_dd={max_dd:.2f}% "
+        f"pf={pf:.2f}"
+    )
 
     # 5) Визуализация кривой
     buf = io.BytesIO()
