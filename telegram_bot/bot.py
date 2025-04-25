@@ -253,7 +253,7 @@ async def chart_command(update: Update, context: CallbackContext):
             # 4) проверяем, хватает ли средств (учитываем комиссию)
             cost = position_size * entry_price * (1 + commission_rate)
             if cost > usd_balance or position_size <= 0:
-                message += "❗ Недостаточно средств или расчёт объёма неверен.\n"
+                details_message += "❗ Недостаточно средств или расчёт объёма неверен.\n"
             else:
                 # 5) списываем USDT, добавляем BTC и формируем сообщение
                 usd_balance -= cost
