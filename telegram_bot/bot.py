@@ -300,7 +300,7 @@ async def chart_command(update: Update, context: CallbackContext):
             stop_loss=stop_loss_price,
             take_profit=take_profit_price,
             fraction=fraction,
-            risk_per_trade=risk_per_trade
+            risk_per_trade=risk_per_trade,
             in_trade = new_in_trade
         )
 
