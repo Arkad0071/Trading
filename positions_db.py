@@ -7,32 +7,39 @@ DB_PATH = Path("market_data.db")
 
 def init_bot_state_table():
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
+    c = conn.cursor()
+    # 1) Создаём таблицу (если её ещё нет) с правильным синтаксисом
+    c.execute('''
         CREATE TABLE IF NOT EXISTS bot_state (
             id INTEGER PRIMARY KEY CHECK (id = 1),
-            usd_balance    REAL DEFAULT 0,
-            btc_balance    REAL DEFAULT 0,
-            entry_price    REAL DEFAULT 0,
-            stop_loss      REAL DEFAULT 0,
-            take_profit    REAL DEFAULT 0,
-            fraction       REAL DEFAULT 0.3,
-            risk_per_trade REAL DEFAULT 0.02,
+            usd_balance    REAL    DEFAULT 0,
+            btc_balance    REAL    DEFAULT 0,
+            entry_price    REAL    DEFAULT 0,
+            stop_loss      REAL    DEFAULT 0,
+            take_profit    REAL    DEFAULT 0,
+            fraction       REAL    DEFAULT 0.3,
+            risk_per_trade REAL    DEFAULT 0.02,
             in_trade       INTEGER DEFAULT 0  -- 0 == False, 1 == True
         )
     ''')
-    # Если таблица пустая — вставляем строку с дефолтами
-    cursor.execute("SELECT COUNT(*) FROM bot_state WHERE id = 1")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute('''
-            INSERT INTO bot_state (
-              id, usd_balance, btc_balance,
-              entry_price, stop_loss, take_profit,
-              fraction, risk_per_trade, in_trade
-            ) VALUES (1, 0, 0, 0, 0, 0, 0.3, 0.02, 0)
+    # 2) Миграция: если мы подхватили уже существующую БД без колонки in_trade, добавим её
+    cols = [row[1] for row in c.execute("PRAGMA table_info(bot_state)")]
+    if "in_trade" not in cols:
+        c.execute("ALTER TABLE bot_state ADD COLUMN in_trade INTEGER DEFAULT 0")
+
+    # 3) Если таблица совсем пустая — вставим дефолтную запись
+    c.execute("SELECT COUNT(*) FROM bot_state")
+    if c.fetchone()[0] == 0:
+        c.execute('''
+            INSERT INTO bot_state
+                (id, usd_balance, btc_balance, entry_price, stop_loss, take_profit, fraction, risk_per_trade, in_trade)
+            VALUES
+                (1, 0, 0, 0, 0, 0, 0.3, 0.02, 0)
         ''')
+
     conn.commit()
     conn.close()
+
 
 
 def init_logs_table():
@@ -63,21 +70,13 @@ def init_logs_table():
 
 def load_bot_state():
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT
-          usd_balance,
-          btc_balance,
-          entry_price,
-          stop_loss,
-          take_profit,
-          fraction,
-          risk_per_trade,
-          in_trade
-        FROM bot_state
-        WHERE id = 1
+    c = conn.cursor()
+    c.execute('''
+        SELECT usd_balance, btc_balance, entry_price, stop_loss, take_profit,
+               fraction, risk_per_trade, in_trade
+        FROM bot_state WHERE id = 1
     ''')
-    row = cursor.fetchone()
+    row = c.fetchone()
     conn.close()
     return {
         "usd_balance":    row[0],
@@ -89,7 +88,6 @@ def load_bot_state():
         "risk_per_trade": row[6],
         "in_trade":       bool(row[7]),
     }
-
 
 def save_bot_state(
     usd_balance, btc_balance,
