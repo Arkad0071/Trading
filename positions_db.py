@@ -89,23 +89,23 @@ def load_bot_state():
         "in_trade":       bool(row[7]),
     }
 
-def save_bot_state(
-    usd_balance, btc_balance,
-    entry_price, stop_loss, take_profit,
-    fraction, risk_per_trade, in_trade
-):
+def save_bot_state(usd_balance, btc_balance, entry_price, stop_loss, take_profit,
+                   fraction, risk_per_trade, in_trade):
+    """
+    Сохраняем состояние торговли, включая флаг in_trade (0/1).
+    """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        UPDATE bot_state SET
-          usd_balance    = ?,
-          btc_balance    = ?,
-          entry_price    = ?,
-          stop_loss      = ?,
-          take_profit    = ?,
-          fraction       = ?,
-          risk_per_trade = ?,
-          in_trade       = ?
+        UPDATE bot_state
+        SET usd_balance    = ?,
+            btc_balance    = ?,
+            entry_price    = ?,
+            stop_loss      = ?,
+            take_profit    = ?,
+            fraction       = ?,
+            risk_per_trade = ?,
+            in_trade       = ?
         WHERE id = 1
     ''', (
         usd_balance,
@@ -115,7 +115,7 @@ def save_bot_state(
         take_profit,
         fraction,
         risk_per_trade,
-        1 if in_trade else 0,
+        1 if in_trade else 0
     ))
     conn.commit()
     conn.close()

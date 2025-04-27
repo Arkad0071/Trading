@@ -286,6 +286,13 @@ async def chart_command(update: Update, context: CallbackContext):
         await update.message.reply_text(msg)
 
         # 8) сохраняем новое состояние
+        if signal == "BUY":
+            new_in_trade = True
+        elif signal == "SELL":
+            new_in_trade = False
+        else:
+            new_in_trade = state["in_trade"]
+
         save_bot_state(
             usd_balance=usd_balance,
             btc_balance=btc_balance,
@@ -294,11 +301,67 @@ async def chart_command(update: Update, context: CallbackContext):
             take_profit=take_profit_price,
             fraction=fraction,
             risk_per_trade=risk_per_trade
+            in_trade = new_in_trade
         )
 
     except Exception as e:
         logger.error(f"Ошибка в /chart: {e}")
         await update.message.reply_text(f"Ошибка: {e}")
+
+async def open_position_cmd(update: Update, context: CallbackContext):
+    """Пользователь подтвердил вход по последнему сигналу."""
+    state = load_bot_state()
+    ep = state["entry_price"]
+    sl = state["stop_loss"]
+    tp = state["take_profit"]
+    if not ep or sl is None or tp is None:
+        return await update.message.reply_text("Нет данных по последнему сигналу, сначала /chart")
+    # 1) переключаем флаг
+    open_position(ep, sl, tp)
+    # 2) запускаем задачу проверки каждую минуту
+    chat_id = update.effective_chat.id
+    # если уже есть, удалим
+    for job in context.application.job_queue.get_jobs_by_name(f"trade_{chat_id}"):
+        job.schedule_removal()
+    context.application.job_queue.run_repeating(
+        monitor_trade_callback,
+        interval=60,  # каждую минуту
+        first=0,
+        name=f"trade_{chat_id}",
+        data=chat_id
+    )
+    await update.message.reply_text(f"Позиция открыта по {ep:.2f}. SL={sl:.2f}, TP={tp:.2f}. Мониторинг запущен.")
+
+async def monitor_trade_callback(context: CallbackContext):
+    chat_id = context.job.data
+    state = load_bot_state()
+    if not state.get("in_trade", False):
+        return  # вы уже закрыли
+
+    price = get_candlestick_data("BTC/USDT","1m")["close"].iloc[-1]
+    sl = state["stop_loss"]
+    tp = state["take_profit"]
+
+    if price <= sl:
+        await context.bot.send_message(chat_id, f"⚠️ STOP-LOSS hit: {price:.2f} ≤ SL={sl:.2f}")
+        log_trade(entry_price=state["entry_price"], exit_price=sl, position_size=..., profit=...)
+        close_position()
+        context.job.schedule_removal()
+    elif price >= tp:
+        await context.bot.send_message(chat_id, f"✅ TAKE-PROFIT hit: {price:.2f} ≥ TP={tp:.2f}")
+        log_trade(entry_price=state["entry_price"], exit_price=tp, position_size=..., profit=...)
+        close_position()
+        context.job.schedule_removal()
+
+
+async def close_position_cmd(update: Update, context: CallbackContext):
+    """Пользователь закрыл позицию вручную."""
+    chat_id = update.effective_chat.id
+    close_position()
+    jobs = context.application.job_queue.get_jobs_by_name(f"trade_{chat_id}")
+    for j in jobs: j.schedule_removal()
+    await update.message.reply_text("Позиция закрыта, мониторинг остановлен.")
+
 
 async def train_command(update: Update, context: CallbackContext):
     try:
@@ -509,6 +572,8 @@ def main():
     application.add_handler(CommandHandler("monitor", start_monitor))
     application.add_handler(CommandHandler("stop_monitor", stop_monitor))
     application.add_handler(CommandHandler("backtest_report", backtest_report))
+    application.add_handler(CommandHandler("open_position", open_position_cmd))
+    application.add_handler(CommandHandler("close_position", close_position_cmd))
 
     # планируем retrain_callback на 00:00 UTC каждый день
     application.job_queue.run_daily(
