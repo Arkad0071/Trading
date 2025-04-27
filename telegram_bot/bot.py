@@ -19,6 +19,7 @@ from positions_db import load_bot_state, save_bot_state
 from positions_db import init_bot_state_table
 from positions_db import log_prediction, log_trade
 from positions_db import log_trade
+from positions_db import open_position, close_position
 from telegram.ext import JobQueue, Job
 import io
 import matplotlib.pyplot as plt
