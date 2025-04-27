@@ -131,13 +131,22 @@ async def monitor_callback(context: CallbackContext):
         prob = model.predict(X_last)[0][0] * 100  # в процентах
 
         # ─── 4) Определяем сигнал ─────────────────────────────────────
-        signal = "HOLD"
-        if prob > 55:
+        if prob > 60:
+            signal = "STRONG_BUY"
+        elif prob > 55:
             signal = "BUY"
+        elif prob < 40:
+            signal = "STRONG_SELL"
         elif prob < 45:
             signal = "SELL"
+        else:
+            signal = "HOLD"
 
-        log_prediction(signal, prob, entry_price)
+        # динамический процент риска по ATR
+        atr = df["ATR"].iloc[-1]
+        last_close = df["close"].iloc[-1]
+        atr_pct = atr / last_close
+        risk_pct = min(max(atr_pct * 1.5, 0.005), 0.03)  # от 0.5% до 3%
 
         # ─── 5) Проверяем, изменился ли сигнал ────────────────────────
         prev = context.chat_data.get("last_signal")
@@ -152,11 +161,13 @@ async def monitor_callback(context: CallbackContext):
         else:  # SELL
             entry_price = df["close"].iloc[-1] * (1 - slippage_rate)
 
+        log_prediction(signal, prob, entry_price)
+
         position_size = calculate_position_size(
             balance=usd_balance,
             entry_price=entry_price,
             stop_loss_pct=DEFAULT_SL_PCT,
-            risk_pct=DEFAULT_RISK_PCT
+            risk_pct=risk_pct
         )
         stop_price, take_price = calculate_sl_tp_levels(
             entry_price=entry_price,
@@ -167,12 +178,15 @@ async def monitor_callback(context: CallbackContext):
         # ─── 7) Формируем и отправляем уведомление ───────────────────
         text = (
             f"⏰ Мониторинг сигнала:\n"
-            f"📈 Вероятность роста: {prob:.2f}%\n"
-            f"🔔 Сигнал: {signal}\n\n"
-            f"• Вход: {entry_price:.2f} USDT\n"
-            f"• Объём: {position_size:.6f} BTC\n"
-            f"• SL: {stop_price:.2f}, TP: {take_price:.2f}"
+            f"📈 Вероятность: {prob:.2f}%\n"
+            f"🔔 {signal.replace('_', ' ')}\n"
+            f"• Risk: {risk_pct * 100:.2f}%\n"
+            f"• Объём: {position_size:.6f} BTC\n"  # ← вот она
+            f"• Entry: {entry_price:.2f}\n"
+            f"• SL: {stop_price:.2f}\n"
+            f"• TP: {take_price:.2f}"
         )
+
         await context.bot.send_message(chat_id=chat_id, text=text)
 
     except Exception as e:
@@ -181,130 +195,97 @@ async def monitor_callback(context: CallbackContext):
 
 async def chart_command(update: Update, context: CallbackContext):
     try:
-        await update.message.reply_text("Запуск прогноза модели...")
+        await update.message.reply_text("🔄 Запуск прогноза модели...")
 
-        # ─── ЗАГРУЗКА СОСТОЯНИЯ И ПАРАМЕТРОВ ──────────────────────────────
+        # 1) загрузили состояние
         state = load_bot_state()
-        usd_balance      = state["usd_balance"]
-        btc_balance      = state["btc_balance"]
-        entry_price = state["entry_price"]  # <- инициализируем
-        stop_loss_price = state["stop_loss"]  # <- чтобы всегда были переменные
+        usd_balance = state["usd_balance"]
+        btc_balance = state["btc_balance"]
+        entry_price    = state["entry_price"]
+        stop_loss_price= state["stop_loss"]
         take_profit_price = state["take_profit"]
-        fraction         = state.get("fraction", 0.3)
-        risk_per_trade   = state.get("risk_per_trade", 0.02)
+        fraction      = state.get("fraction", 0.3)
+        risk_per_trade= state.get("risk_per_trade", DEFAULT_RISK_PCT)
 
-        # параметры проскальзывания и комиссии
-        slippage_rate    = 0.01   # 1%
-        commission_rate  = 0.001  # 0.1%
-        # ────────────────────────────────────────────────────────────────
+        # параметры
+        slippage_rate   = 0.01
+        commission_rate = 0.001
 
-
-        # 1. Получаем свежие данные
-        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+        # 2) данные и индикаторы
+        df = get_candlestick_data("BTC/USDT", "1h")
         if df.empty:
-            await update.message.reply_text("Не удалось получить данные. Попробуйте позже.")
-            return
-
-        # 2. Рассчитываем индикаторы
+            return await update.message.reply_text("Нет данных для прогноза.")
         df = calculate_indicators(df)
 
-        # 3. Подготавливаем данные для модели
-        features = ["close", "volume", "RSI", "MACD", "MACD_signal", "ATR"]
-        sequence_length = 50
-        X, _, _ = prepare_features(df, features=features, sequence_length=sequence_length)
-        if len(X) == 0:
-            await update.message.reply_text("Недостаточно данных для прогноза.")
-            return
+        # 3) подготовка фич
+        features = ["close","volume","RSI","MACD","MACD_signal","ATR"]
+        X, _, _ = prepare_features(df, features, sequence_length=50)
+        if not len(X):
+            return await update.message.reply_text("Недостаточно исторических свечей.")
 
-        # Загружаем scaler (предполагается, что он был сохранён в /train)
-        if not os.path.exists("scaler.pkl"):
-            await update.message.reply_text("Scaler не найден. Сначала выполните /train.")
-            return
-        scaler = joblib.load("scaler.pkl")
-
-        # Создаем объект модели и загружаем сохранённую модель (предполагается, что файл существует)
-        model = LSTMModel(sequence_length=sequence_length, num_features=len(features))
-        if not os.path.exists("lstm_model.h5"):
-            await update.message.reply_text("Модель не найдена. Сначала выполните /train.")
-            return
+        # 4) загрузили модель
+        if not os.path.exists("scaler.pkl") or not os.path.exists("lstm_model.h5"):
+            return await update.message.reply_text("Сначала выполните /train.")
+        model = LSTMModel(50, len(features))
         model.load_model("lstm_model.h5")
+        prob = model.predict(X[-1].reshape(1,50,len(features)))[0][0] * 100
 
-        # 5. Прогнозируем на последней последовательности данных
-        X_last = X[-1].reshape(1, sequence_length, len(features))
-        prediction = model.predict(X_last)[0][0]  # Получаем вероятность
-        probability = prediction * 100  # перевод в проценты
-
-        signal = "HOLD"
-        details_message = ""
-
-        # 6. Формируем интерпретацию сигнала
-        threshold_buy = 55.0  # 55%
-        threshold_sell = 45.0  # 45%
-        if probability > threshold_buy:
+        # 5) определяем сигналы
+        if prob > 60:
+            signal = "STRONG_BUY"
+        elif prob > 55:
             signal = "BUY"
-            last_close = df["close"].iloc[-1]
-            # 1) рассчитываем цену входа с проскальзыванием
-            entry_price = last_close * (1 + slippage_rate)
+        elif prob < 40:
+            signal = "STRONG_SELL"
+        elif prob < 45:
+            signal = "SELL"
+        else:
+            signal = "HOLD"
 
-            # 2) рассчитываем объём позиции (BTC) по риску
+        details = ""
+        # только для покупок делаем расчёт позиции
+        if signal in ("BUY", "STRONG_BUY"):
+            last = df["close"].iloc[-1]
+            entry_price = last * (1 + slippage_rate)
             position_size = calculate_position_size(
                 balance=usd_balance,
                 entry_price=entry_price,
                 stop_loss_pct=DEFAULT_SL_PCT,
-                risk_pct=DEFAULT_RISK_PCT
+                risk_pct=risk_per_trade
             )
-
-            # 3) рассчитываем уровни SL и TP
             stop_price, take_price = calculate_sl_tp_levels(
-                entry_price=entry_price,
-                stop_loss_pct=DEFAULT_SL_PCT,
-                tp_ratio=DEFAULT_TP_RATIO
+                entry_price, DEFAULT_SL_PCT, DEFAULT_TP_RATIO
             )
-
-            # 4) проверяем, хватает ли средств (учитываем комиссию)
             cost = position_size * entry_price * (1 + commission_rate)
             if cost > usd_balance or position_size <= 0:
-                details_message += "❗ Недостаточно средств или расчёт объёма неверен.\n"
+                details = "❗ Недостаточно средств или расчёт объёма неверен.\n"
             else:
-                # 5) списываем USDT, добавляем BTC и формируем сообщение
                 usd_balance -= cost
-                btc_balance += position_size
-
-                entry_price = entry_price
+                btc_balance  += position_size
                 stop_loss_price = stop_price
                 take_profit_price = take_price
-
-                details_message += (
-                    f"💰 BUY сигнал:\n"
+                details = (
+                    f"💰 {signal}:\n"
                     f"• Объём: {position_size:.6f} BTC\n"
-                    f"• Цена входа: {entry_price:.2f} USDT\n"
-                    f"• SL: {stop_loss_price:.2f}, TP: {take_profit_price:.2f}\n"
+                    f"• Вход:  {entry_price:.2f} USDT\n"
+                    f"• SL:    {stop_price:.2f}\n"
+                    f"• TP:    {take_price:.2f}\n"
                 )
 
-        elif probability < threshold_sell:
-            signal = "SELL"
+        # 6) логируем прогноз
+        log_prediction(signal, prob, entry_price)
+        logger.info(f"[PREDICTION] signal={signal} prob={prob:.2f}% entry={entry_price:.2f}")
 
-            # ————— Логируем прогноз в БД и в системный лог —————
-            log_prediction(
-                signal=signal,
-                probability=probability,
-                entry_price=entry_price
-            )
-            logger.info(
-                f"[PREDICTION] signal={signal} "
-                f"prob={probability:.2f}% "
-                f"entry_price={entry_price:.2f}"
-            )
-            # ——————————————————————————————————————————————
-
-        # 7. Формируем итоговое сообщение
-        message = (
+        # 7) выводим в чат
+        msg = (
             f"🔎 Прогноз модели:\n"
-            f"📈 Вероятность роста: {probability:.2f}%\n"
-            f"Сигнал: {signal}\n\n"
-            f"{details_message}"
+            f"📈 Вероятность роста: {prob:.2f}%\n"
+            f"🔔 Сигнал: {signal}\n\n"
+            f"{details}"
         )
-        await update.message.reply_text(message)
+        await update.message.reply_text(msg)
+
+        # 8) сохраняем новое состояние
         save_bot_state(
             usd_balance=usd_balance,
             btc_balance=btc_balance,
@@ -316,8 +297,8 @@ async def chart_command(update: Update, context: CallbackContext):
         )
 
     except Exception as e:
-        logger.error(f"Ошибка в команде /chart: {e}")
-        await update.message.reply_text(f"Ошибка при прогнозировании: {e}")
+        logger.error(f"Ошибка в /chart: {e}")
+        await update.message.reply_text(f"Ошибка: {e}")
 
 async def train_command(update: Update, context: CallbackContext):
     try:
