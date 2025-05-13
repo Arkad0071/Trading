@@ -611,7 +611,8 @@ def main():
     )
 
     logger.info("Telegram-бот запущен.")
-    application.run_polling()
+    application.run_polling(drop_pending_updates=True)
+
 
 init_bot_state_table()
 
