@@ -7,7 +7,7 @@ from datetime import time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 from utils.config import TOKEN, BYBIT_API_KEY, BYBIT_API_SECRET
-from utils.config import DEFAULT_RISK_PCT, DEFAULT_SL_PCT, DEFAULT_TP_RATIO
+from utils.config import DEFAULT_TP_RATIO, DEFAULT_SL_PCT, DEFAULT_RISK_PCT, COMMISSION_RATE
 from data.data_manager import get_candlestick_data
 from indicators.indicators import calculate_indicators
 from models.preprocess import prepare_features
@@ -114,6 +114,10 @@ async def monitor_callback(context: CallbackContext):
         # ─── 2) Получаем и подготавливаем данные ──────────────────────
         df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
         if df.empty:
+            await context.bot.send_message(
+                chat_id,
+                "⚠️ Мониторинг: не удалось получить данные для расчёта сигнала."
+            )
             return
 
         df = calculate_indicators(df)
@@ -121,6 +125,10 @@ async def monitor_callback(context: CallbackContext):
         sequence_length = 50
         X, _, _ = prepare_features(df, features=features, sequence_length=sequence_length)
         if len(X) == 0:
+            await context.bot.send_message(
+                chat_id,
+                "⚠️ Мониторинг: недостаточно данных для формирования X."
+            )
             return
 
         # ─── 3) Прогнозируем ─────────────────────────────────────────
@@ -213,7 +221,9 @@ async def chart_command(update: Update, context: CallbackContext):
         commission_rate = 0.001
 
         # 2) данные и индикаторы
+
         df = get_candlestick_data("BTC/USDT", "1h")
+        logger.info(f"[CHART] Получено строк: {len(df)}")
         if df.empty:
             return await update.message.reply_text("Нет данных для прогноза.")
         df = calculate_indicators(df)
@@ -345,12 +355,27 @@ async def monitor_trade_callback(context: CallbackContext):
 
     if price <= sl:
         await context.bot.send_message(chat_id, f"⚠️ STOP-LOSS hit: {price:.2f} ≤ SL={sl:.2f}")
-        log_trade(entry_price=state["entry_price"], exit_price=sl, position_size=..., profit=...)
+        position_size = state["btc_balance"]
+        entry_price = state["entry_price"]
+        exit_price = sl
+        commission = (entry_price + exit_price) * position_size * COMMISSION_RATE
+        profit = (exit_price - entry_price) * position_size - commission
+        log_trade(
+            entry_price=entry_price,
+            exit_price=exit_price,
+            position_size=position_size,
+            profit=profit
+        )
         close_position()
         context.job.schedule_removal()
     elif price >= tp:
         await context.bot.send_message(chat_id, f"✅ TAKE-PROFIT hit: {price:.2f} ≥ TP={tp:.2f}")
-        log_trade(entry_price=state["entry_price"], exit_price=tp, position_size=..., profit=...)
+        position_size = state["btc_balance"]
+        entry_price = state["entry_price"]
+        exit_price = tp
+        commission = (entry_price + exit_price) * position_size * COMMISSION_RATE
+        profit = (exit_price - entry_price) * position_size - commission
+        log_trade(...)
         close_position()
         context.job.schedule_removal()
 
@@ -370,6 +395,7 @@ async def train_command(update: Update, context: CallbackContext):
 
         # 1. Получаем данные с биржи (или из базы)
         df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+        logger.info(f"[TRAIN] Получено строк: {len(df)}")
         if df.empty:
             await update.message.reply_text("Не удалось получить данные. Попробуйте позже.")
             return
@@ -409,6 +435,7 @@ async def retrain_callback(context: CallbackContext):
     logger.info("=== Начинаю автоматическое переобучение ===")
     # 1) Получаем и готовим данные
     df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+    logger.info(f"[TRAIN] Получено строк: {len(df)}")
     if df.empty:
         logger.error("Retrain: не удалось скачать данные")
         return

@@ -26,13 +26,14 @@ def get_candlestick_data(symbol="BTC/USDT", timeframe="1h", since=None):
     """
     exchange = init_exchange()
     try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since)
+        logger.info(f"Запрашиваю OHLCV для {symbol} ({timeframe}), since={since}")
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=500)
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['start_at'] = pd.to_datetime(df['timestamp'], unit='ms')
         logger.info(f"Получено {len(df)} строк данных для {symbol}.")
         return df
     except Exception as e:
-        logger.error(f"Ошибка при получении данных для {symbol}: {e}")
+        logger.exception(f"Ошибка при получении OHLCV для {symbol}:")
         return pd.DataFrame()
 
 def save_to_db(df, symbol, timeframe, db_path="market_data.db"):
