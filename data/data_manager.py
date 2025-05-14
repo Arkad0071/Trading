@@ -7,6 +7,8 @@ import os
 import logging
 from dotenv import load_dotenv
 from utils.config import MARGIN_MODE, LEVERAGE
+from utils.config import BYBIT_API_KEY, BYBIT_API_SECRET
+
 
 
 load_dotenv()
