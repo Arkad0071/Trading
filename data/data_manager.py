@@ -6,19 +6,41 @@ from datetime import datetime
 import os
 import logging
 from dotenv import load_dotenv
+from utils.config import MARGIN_MODE, LEVERAGE
+
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 def init_exchange():
-    """
-    Инициализирует биржу Bybit через ccxt, используя ключи из .env.
-    """
-    return ccxt.bybit({
+    exchange = ccxt.bybit({
         'apiKey': os.getenv("BYBIT_API_KEY"),
         'secret': os.getenv("BYBIT_API_SECRET"),
         'enableRateLimit': True,
     })
+
+    # Переключаем режим маржи: cross или isolated
+    # Для Bybit в unified API:
+    if exchange.has.get('setMarginMode'):
+        exchange.setMarginMode(MARGIN_MODE, 'BTC/USDT')
+    else:
+        # Альтернативный способ для старых версий CCXT
+        exchange.private_post_position_switch_isolated({
+            'symbol': 'BTC/USDT',
+            'is_isolated': (MARGIN_MODE == 'isolated')
+        })
+
+    # Устанавливаем плечо
+    if exchange.has.get('setLeverage'):
+        exchange.setLeverage(LEVERAGE, 'BTC/USDT')
+    else:
+        exchange.private_post_position_leverage_save({
+            'symbol': 'BTC/USDT',
+            'buy_leverage': LEVERAGE,
+            'sell_leverage': LEVERAGE
+        })
+
+    return exchange
 
 def get_candlestick_data(symbol="BTC/USDT", timeframe="1h", since=None):
     """
