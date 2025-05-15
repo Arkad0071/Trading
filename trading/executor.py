@@ -23,6 +23,32 @@ logger = logging.getLogger(__name__)
 
 def init_trading_client(symbol: str = "BTC/USDT"):
     """
+    Private Bybit client for trading futures:
+    - maps to linear USDT-m futures
+    - sets margin mode (if supported)
+    - sets leverage (if supported)
+    """
+    exchange = ccxt.bybit({
+        'apiKey': BYBIT_API_KEY,
+        'secret': BYBIT_API_SECRET,
+        'enableRateLimit': True,
+        'options': {'defaultType': 'future'}  # use USDT-M linear futures
+    })
+    # Switch margin mode if supported
+    if exchange.has.get('setMarginMode'):
+        try:
+            exchange.setMarginMode(MARGIN_MODE, symbol)
+        except Exception as e:
+            logger.warning(f"Margin mode setup failed: {e}")
+    # Set leverage if supported
+    if exchange.has.get('setLeverage'):
+        try:
+            exchange.setLeverage(LEVERAGE, symbol)
+        except Exception as e:
+            logger.warning(f"Leverage setup failed (unsupported for symbol {symbol}): {e}")
+
+    return exchange(symbol: str = "BTC/USDT"):
+    """
     Private Bybit client for trading:
     - sets margin mode (if supported)
     - attempts to set leverage (if supported)
@@ -50,13 +76,18 @@ def init_trading_client(symbol: str = "BTC/USDT"):
 
 def place_order(symbol: str, side: str, amount: float, price: float = None):
     """
-    Places an order on Bybit via unified create_order.
-    side: 'Buy' or 'Sell'; price=None => market.
+    Places an order on Bybit futures using unified API:
+    - market order if price is None
+    - limit order otherwise
     """
     client = init_trading_client(symbol)
-    order_type = 'market' if price is None else 'limit'
-    logger.info(f"Placing order: symbol={symbol}, type={order_type}, side={side}, amount={amount}, price={price}")
-    resp = client.create_order(symbol, order_type, side.upper(), amount, price, {})
+    logger.info(f"Placing order: symbol={symbol}, side={side}, amount={amount}, price={price}")
+    if price is None:
+        # market order
+        resp = client.create_market_order(symbol, side.upper(), amount)
+    else:
+        # limit order
+        resp = client.create_limit_order(symbol, side.upper(), amount, price)
     logger.info(f"Order response: {resp}")
     return resp
 
