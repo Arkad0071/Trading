@@ -2,7 +2,6 @@
 
 import ccxt
 import logging
-from trading.executor import init_trading_client
 from utils.config import (
     BYBIT_API_KEY,
     BYBIT_API_SECRET,
@@ -24,10 +23,10 @@ logger = logging.getLogger(__name__)
 
 def init_trading_client(symbol: str = "BTC/USDT:USDT"):
     """
-    Private Bybit client for USDT-m futures trading:
-    - uses linear USDT futures
-    - sets margin mode (if supported)
-    - sets leverage (if supported)
+    Private Bybit client for USDT futures trading:
+    - uses linear USDT futures endpoint
+    - sets margin mode (cross/isolated) if supported
+    - sets leverage if supported
     """
     exchange = ccxt.bybit({
         'apiKey': BYBIT_API_KEY,
@@ -76,9 +75,9 @@ def execute_entry(symbol: str, entry_price: float, position_size: float, stop_lo
     commission = notional * COMMISSION_RATE
     position_id = add_open_position(symbol, entry_price, stop_loss, take_profit, position_size)
     state = load_bot_state()
-    new_usd = state['usd_balance'] - margin_used - commission
+    new_usdt = state['usd_balance'] - margin_used - commission
     save_bot_state(
-        usd_balance=new_usd,
+        usd_balance=new_usdt,
         btc_balance=state['btc_balance'],
         entry_price=state['entry_price'],
         stop_loss=state['stop_loss'],
@@ -87,7 +86,7 @@ def execute_entry(symbol: str, entry_price: float, position_size: float, stop_lo
         risk_per_trade=state['risk_per_trade'],
         in_trade=state['in_trade']
     )
-    logger.info(f"Executed entry #{position_id}: margin_used={margin_used:.2f}, commission={commission:.2f}, new USD={new_usd:.2f}")
+    logger.info(f"Executed entry #{position_id}: margin_used={margin_used:.2f}, commission={commission:.2f}, new USD={new_usdt:.2f}")
     return {'id': position_id, 'response': resp}
 
 
@@ -109,9 +108,9 @@ def execute_exit(symbol: str, position_id: int, exit_price: float):
     remove_open_position(position_id)
     margin_used = entry_price * size / LEVERAGE
     state = load_bot_state()
-    new_usd = state['usd_balance'] + margin_used - commission
+    new_usdt = state['usd_balance'] + margin_used - commission
     save_bot_state(
-        usd_balance=new_usd,
+        usd_balance=new_usdt,
         btc_balance=state['btc_balance'],
         entry_price=state['entry_price'],
         stop_loss=state['stop_loss'],
@@ -120,5 +119,7 @@ def execute_exit(symbol: str, position_id: int, exit_price: float):
         risk_per_trade=state['risk_per_trade'],
         in_trade=state['in_trade']
     )
-    logger.info(f"Executed exit #{position_id}: profit={profit:.2f}, commission={commission:.2f}, new USD={new_usd:.2f}")
+    logger.info(f"Executed exit #{position_id}: profit={profit:.2f}, commission={commission:.2f}, new USD={new_usdt:.2f}")
     return {'id': position_id, 'response': resp, 'profit': profit}
+
+
