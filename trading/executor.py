@@ -9,7 +9,7 @@ from utils.config import (
     COMMISSION_RATE
 )
 from positions_db import (
-    add_open_position,
+      add_open_position,
     get_open_positions,
     remove_open_position,
     log_trade,
@@ -29,9 +29,12 @@ def init_trading_client(symbol: str = "BTC/USDT"):
         'secret': BYBIT_API_SECRET,
         'enableRateLimit': True,
     })
-    # Monkey-patch fetch_currencies to avoid private endpoint calls during setup
+    # Monkey-patch fetch_currencies and unified checks to avoid private endpoint calls
     exchange.has['fetchCurrencies'] = False
     exchange.fetch_currencies = lambda params=None: {}
+    # Disable unified API to skip is_unified_enabled calls
+    exchange.has['fetchOHLCV'] = True  # keep fetchOHLCV
+    exchange.is_unified_enabled = lambda: (False, False)
 
     # Set leverage if supported
     try:
