@@ -24,6 +24,9 @@ from telegram.ext import JobQueue, Job
 import io
 import matplotlib.pyplot as plt
 from collections import Counter
+from trading.executor import execute_entry, execute_exit
+from positions_db import get_open_positions
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -184,7 +187,19 @@ async def monitor_callback(context: CallbackContext):
             tp_ratio=DEFAULT_TP_RATIO
         )
 
-        # ─── 7) Формируем и отправляем уведомление ───────────────────
+        # ─── 7) Автоматическое исполнение ордеров ───────────────────
+        if signal in ("STRONG_BUY", "BUY"):
+            # здесь бот открывает позицию Market Buy
+            resp = execute_entry("BTC/USDT", entry_price, position_size, stop_price, take_price)
+            await context.bot.send_message(chat_id, f"✅ Авто-открытие позиции: {resp}")
+        elif signal in ("STRONG_SELL", "SELL"):
+            # закрываем все текущие позиции
+            positions = get_open_positions()
+            for pos in positions:
+                resp = execute_exit(pos["symbol"], pos["id"], entry_price)
+            await context.bot.send_message(chat_id, f"🔔 Авто-закрытие позиций выполнено.")
+
+        # ─── 8) Формируем и отправляем уведомление ───────────────────
         text = (
             f"⏰ Мониторинг сигнала:\n"
             f"📈 Вероятность: {prob:.2f}%\n"
@@ -387,6 +402,46 @@ async def close_position_cmd(update: Update, context: CallbackContext):
     jobs = context.application.job_queue.get_jobs_by_name(f"trade_{chat_id}")
     for j in jobs: j.schedule_removal()
     await update.message.reply_text("Позиция закрыта, мониторинг остановлен.")
+
+async def auto_buy_cmd(update: Update, context: CallbackContext):
+    """Открыть позицию рыночным ордером по текущему сигналу."""
+    chat_id = update.effective_chat.id
+    # берём цену последней минуты
+    df = get_candlestick_data("BTC/USDT", "1m")
+    price = df["close"].iloc[-1]
+    # счёт пустого бота
+    state = load_bot_state()
+    size = calculate_position_size(
+        balance=state["usd_balance"],
+        entry_price=price,
+        stop_loss_pct=DEFAULT_SL_PCT,
+        risk_pct=state["risk_per_trade"] * 100
+    )
+    # вычисляем SL/TP
+    sl, tp = calculate_sl_tp_levels(price, DEFAULT_SL_PCT, DEFAULT_TP_RATIO)
+    # исполняем и отвечаем
+    resp = execute_entry("BTC/USDT", price, size, sl, tp)
+    await update.message.reply_text(f"🟢 AutoBuy: size={size:.6f}, entry={price:.2f}\n{resp}")
+
+async def auto_sell_cmd(update: Update, context: CallbackContext):
+    """Закрыть все открытые позиции рыночным Sell."""
+    chat_id = update.effective_chat.id
+    positions = get_open_positions()
+    if not positions:
+        return await update.message.reply_text("Нет открытых позиций.")
+    messages = []
+    for pos in positions:
+        # берём текущую цену
+        df = get_candlestick_data(pos["symbol"], "1m")
+        price = df["close"].iloc[-1]
+        resp = execute_exit(pos["symbol"], pos["id"], price)
+        messages.append(f"🔴 Closed #{pos['id']}: exit={price:.2f}")
+    await update.message.reply_text("\n".join(messages))
+
+async def close_all_cmd(update: Update, context: CallbackContext):
+    """Alias для auto_sell."""
+    await auto_sell_cmd(update, context)
+
 
 
 async def train_command(update: Update, context: CallbackContext):
@@ -602,6 +657,9 @@ def main():
     application.add_handler(CommandHandler("backtest_report", backtest_report))
     application.add_handler(CommandHandler("open_position", open_position_cmd))
     application.add_handler(CommandHandler("close_position", close_position_cmd))
+    application.add_handler(CommandHandler("auto_buy", auto_buy_cmd))
+    application.add_handler(CommandHandler("auto_sell", auto_sell_cmd))
+    application.add_handler(CommandHandler("close_all", close_all_cmd))
 
     # планируем retrain_callback на 00:00 UTC каждый день
     application.job_queue.run_daily(
