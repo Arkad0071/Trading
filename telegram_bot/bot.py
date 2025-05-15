@@ -26,6 +26,8 @@ import matplotlib.pyplot as plt
 from collections import Counter
 from trading.executor import execute_entry, execute_exit
 from positions_db import get_open_positions
+from trading.executor import init_trading_client, execute_entry, execute_exit
+from positions_db import get_open_positions
 
 
 logging.basicConfig(
@@ -404,24 +406,53 @@ async def close_position_cmd(update: Update, context: CallbackContext):
     await update.message.reply_text("Позиция закрыта, мониторинг остановлен.")
 
 async def auto_buy_cmd(update: Update, context: CallbackContext):
-    """Открыть позицию рыночным ордером по текущему сигналу."""
+    """Моментальное открытие позиции Market Buy по текущей цене с балансом из биржи."""
     chat_id = update.effective_chat.id
-    # берём цену последней минуты
-    df = get_candlestick_data("BTC/USDT", "1m")
+    symbol = "BTC/USDT"
+
+    # 1) Получаем последнюю минутную цену
+    df = get_candlestick_data(symbol, "1m")
+    if df.empty:
+        return await update.message.reply_text("⚠️ Нет данных для открытия позиции.")
     price = df["close"].iloc[-1]
-    # счёт пустого бота
+
+    # 2) Инициализируем торговый клиент и подгружаем баланс
+    client = init_trading_client(symbol)
+    balance_info = client.fetch_balance({'type': 'future'})   # USDT-фьючерсы
+    free_usdt = balance_info.get('USDT', {}).get('free', 0)
+
+    # 3) Обновляем состояние в БД
     state = load_bot_state()
+    save_bot_state(
+        usd_balance=free_usdt,
+        btc_balance=state['btc_balance'],
+        entry_price=state['entry_price'],
+        stop_loss=state['stop_loss'],
+        take_profit=state['take_profit'],
+        fraction=state['fraction'],
+        risk_per_trade=state['risk_per_trade'],
+        in_trade=state['in_trade'],
+    )
+
+    # 4) Рассчитываем размер позиции под риск
     size = calculate_position_size(
-        balance=state["usd_balance"],
+        balance=free_usdt,
         entry_price=price,
         stop_loss_pct=DEFAULT_SL_PCT,
-        risk_pct=state["risk_per_trade"] * 100
+        risk_pct=state['risk_per_trade'] * 100
     )
-    # вычисляем SL/TP
     sl, tp = calculate_sl_tp_levels(price, DEFAULT_SL_PCT, DEFAULT_TP_RATIO)
-    # исполняем и отвечаем
-    resp = execute_entry("BTC/USDT", price, size, sl, tp)
-    await update.message.reply_text(f"🟢 AutoBuy: size={size:.6f}, entry={price:.2f}\n{resp}")
+
+    # 5) Исполняем Market Buy
+    resp = execute_entry(symbol, price, size, sl, tp)
+
+    # 6) Отправляем отчёт в чат
+    await update.message.reply_text(
+        f"🟢 AutoBuy:\n"
+        f"Свободно USDT: {free_usdt:.2f}\n"
+        f"Размер позиции: {size:.6f} BTC\n"
+        f"Вход: {price:.2f}\n\n{resp}"
+    )
 
 async def auto_sell_cmd(update: Update, context: CallbackContext):
     """Закрыть все открытые позиции рыночным Sell."""

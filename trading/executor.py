@@ -2,6 +2,7 @@
 
 import ccxt
 import logging
+from trading.executor import init_trading_client
 from utils.config import (
     BYBIT_API_KEY,
     BYBIT_API_SECRET,
