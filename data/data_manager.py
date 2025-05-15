@@ -14,15 +14,20 @@ from utils.config import BYBIT_API_KEY, BYBIT_API_SECRET
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+import ccxt
+
 def init_exchange():
     """
-    Инициализирует биржу Bybit через ccxt, используя ключи из .env.
+    Публичный клиент CCXT для fetch_ohlcv,
+    без автоматического вызова fetch_currencies().
     """
-    return ccxt.bybit({
-        'apiKey': os.getenv("BYBIT_API_KEY"),
-        'secret': os.getenv("BYBIT_API_SECRET"),
+    exchange = ccxt.bybit({
         'enableRateLimit': True,
     })
+    # Отключаем fetch_currencies, чтобы не вызывалось privateGetV5AssetCoinQueryInfo
+    exchange.options['fetchCurrencies'] = False
+    return exchange
+
 
 def get_candlestick_data(symbol="BTC/USDT", timeframe="1h", since=None):
     """
