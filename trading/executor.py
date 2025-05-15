@@ -32,6 +32,9 @@ def init_trading_client(symbol: str = "BTC/USDT"):
         'secret': BYBIT_API_SECRET,
         'enableRateLimit': True,
     })
+    # заглушаем fetch_currencies, чтобы не вызывать приватные эндпоинты до whitelisting
+    exchange.has['fetchCurrencies'] = False
+    exchange.fetch_currencies = lambda params=None: {}
     # Переключаем режим маржи
     if exchange.has.get('setMarginMode'):
         exchange.setMarginMode(MARGIN_MODE, symbol)
