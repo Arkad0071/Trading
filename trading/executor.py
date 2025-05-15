@@ -20,24 +20,33 @@ from positions_db import (
 
 logger = logging.getLogger(__name__)
 
+
 def init_trading_client(symbol: str = "BTC/USDT"):
     """
     Private Bybit client for trading:
-    - sets margin mode (cross/isolated)
-    - sets leverage
+    - sets margin mode (if supported)
+    - attempts to set leverage (if supported)
     """
     exchange = ccxt.bybit({
         'apiKey': BYBIT_API_KEY,
         'secret': BYBIT_API_SECRET,
         'enableRateLimit': True,
     })
-    # Переключаем режим маржи
+    # Switch margin mode if supported
     if exchange.has.get('setMarginMode'):
-        exchange.setMarginMode(MARGIN_MODE, symbol)
-    # Устанавливаем плечо
+        try:
+            exchange.setMarginMode(MARGIN_MODE, symbol)
+        except Exception as e:
+            logger.warning(f"Margin mode setup failed: {e}")
+    # Set leverage if supported
     if exchange.has.get('setLeverage'):
-        exchange.setLeverage(LEVERAGE, symbol)
+        try:
+            exchange.setLeverage(LEVERAGE, symbol)
+        except Exception as e:
+            logger.warning(f"Leverage setup failed (unsupported for symbol {symbol}): {e}")
+
     return exchange
+
 
 def place_order(symbol: str, side: str, amount: float, price: float = None):
     """
@@ -47,16 +56,17 @@ def place_order(symbol: str, side: str, amount: float, price: float = None):
     client = init_trading_client(symbol)
     order_type = 'market' if price is None else 'limit'
     logger.info(f"Placing order: symbol={symbol}, type={order_type}, side={side}, amount={amount}, price={price}")
-    # create_order(symbol, type, side, amount, price, params)
     resp = client.create_order(symbol, order_type, side.upper(), amount, price, {})
     logger.info(f"Order response: {resp}")
     return resp
 
+
 def execute_entry(symbol: str, entry_price: float, position_size: float, stop_loss: float, take_profit: float):
     """
-    Market Buy: send order, record position, update balance.
+    Executes Market Buy: sends order, records position, updates balance.
     """
     resp = place_order(symbol, 'Buy', position_size)
+
     notional = entry_price * position_size
     margin_used = notional / LEVERAGE
     commission = notional * COMMISSION_RATE
@@ -79,9 +89,10 @@ def execute_entry(symbol: str, entry_price: float, position_size: float, stop_lo
     logger.info(f"Executed entry #{position_id}: margin_used={margin_used:.2f}, commission={commission:.2f}, new USD={new_usd:.2f}")
     return {'id': position_id, 'response': resp}
 
+
 def execute_exit(symbol: str, position_id: int, exit_price: float):
     """
-    Market Sell: send order, log trade, remove position, update balance.
+    Executes Market Sell: sends order, logs trade, removes position, updates balance.
     """
     positions = get_open_positions()
     pos = next((p for p in positions if p['id'] == position_id), None)
@@ -95,6 +106,7 @@ def execute_exit(symbol: str, position_id: int, exit_price: float):
 
     commission = (entry_price + exit_price) * size * COMMISSION_RATE
     profit = (exit_price - entry_price) * size - commission
+
     log_trade(entry_price, exit_price, size, profit)
     remove_open_position(position_id)
 
