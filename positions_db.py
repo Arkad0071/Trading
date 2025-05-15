@@ -162,3 +162,73 @@ def log_trade(entry_price: float, exit_price: float, position_size: float, profi
 # Инициализация при импорте
 init_bot_state_table()
 init_logs_table()
+
+def init_open_positions_table():
+    """
+    Таблица для учёта всех открытых позиций.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS open_positions (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol         TEXT,
+            entry_price    REAL,
+            stop_loss      REAL,
+            take_profit    REAL,
+            position_size  REAL,
+            opened_at      TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def add_open_position(symbol: str, entry_price: float, stop_loss: float,
+                      take_profit: float, position_size: float) -> int:
+    """
+    Сохраняет новую позицию и возвращает её ID.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO open_positions "
+        "(symbol, entry_price, stop_loss, take_profit, position_size, opened_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (symbol, entry_price, stop_loss, take_profit, position_size,
+         datetime.utcnow().isoformat())
+    )
+    position_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return position_id
+
+def get_open_positions() -> list[dict]:
+    """
+    Возвращает список всех открытых позиций.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute(
+        "SELECT id, symbol, entry_price, stop_loss, take_profit, position_size "
+        "FROM open_positions"
+    )
+    rows = c.fetchall()
+    conn.close()
+    return [
+        {"id": r[0], "symbol": r[1], "entry_price": r[2],
+         "stop_loss": r[3], "take_profit": r[4], "position_size": r[5]}
+        for r in rows
+    ]
+
+def remove_open_position(position_id: int):
+    """
+    Удаляет позицию из таблицы по её ID.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("DELETE FROM open_positions WHERE id = ?", (position_id,))
+    conn.commit()
+    conn.close()
+
+# Инициализируем таблицу открытых позиций
+init_open_positions_table()
