@@ -21,10 +21,10 @@ from positions_db import (
 logger = logging.getLogger(__name__)
 
 
-def init_trading_client(symbol: str = "BTC/USDT"):
+def init_trading_client(symbol: str = "BTC/USDT:USDT"):
     """
-    Private Bybit client for trading futures:
-    - maps to linear USDT-m futures
+    Private Bybit client for USDT-m futures trading:
+    - uses linear USDT futures
     - sets margin mode (if supported)
     - sets leverage (if supported)
     """
@@ -49,20 +49,17 @@ def init_trading_client(symbol: str = "BTC/USDT"):
     return exchange
 
 
-
 def place_order(symbol: str, side: str, amount: float, price: float = None):
     """
-    Places an order on Bybit futures using unified API:
+    Places an order on Bybit USDT futures:
     - market order if price is None
     - limit order otherwise
     """
     client = init_trading_client(symbol)
-    logger.info(f"Placing order: symbol={symbol}, side={side}, amount={amount}, price={price}")
+    logger.info(f"Placing {side.upper()} order: symbol={symbol}, amount={amount}, price={price}")
     if price is None:
-        # market order
         resp = client.create_market_order(symbol, side.upper(), amount)
     else:
-        # limit order
         resp = client.create_limit_order(symbol, side.upper(), amount, price)
     logger.info(f"Order response: {resp}")
     return resp
@@ -70,16 +67,13 @@ def place_order(symbol: str, side: str, amount: float, price: float = None):
 
 def execute_entry(symbol: str, entry_price: float, position_size: float, stop_loss: float, take_profit: float):
     """
-    Executes Market Buy: sends order, records position, updates balance.
+    Execute Market Buy: sends order, records position, updates balance.
     """
-    resp = place_order(symbol, 'Buy', position_size)
-
+    resp = place_order(symbol, 'buy', position_size)
     notional = entry_price * position_size
     margin_used = notional / LEVERAGE
     commission = notional * COMMISSION_RATE
-
     position_id = add_open_position(symbol, entry_price, stop_loss, take_profit, position_size)
-
     state = load_bot_state()
     new_usd = state['usd_balance'] - margin_used - commission
     save_bot_state(
@@ -92,31 +86,26 @@ def execute_entry(symbol: str, entry_price: float, position_size: float, stop_lo
         risk_per_trade=state['risk_per_trade'],
         in_trade=state['in_trade']
     )
-
     logger.info(f"Executed entry #{position_id}: margin_used={margin_used:.2f}, commission={commission:.2f}, new USD={new_usd:.2f}")
     return {'id': position_id, 'response': resp}
 
 
 def execute_exit(symbol: str, position_id: int, exit_price: float):
     """
-    Executes Market Sell: sends order, logs trade, removes position, updates balance.
+    Execute Market Sell: sends order, logs trade, removes position, updates balance.
     """
     positions = get_open_positions()
     pos = next((p for p in positions if p['id'] == position_id), None)
     if not pos:
         logger.error(f"Position {position_id} not found")
         return None
-
     entry_price = pos['entry_price']
     size = pos['position_size']
-    resp = place_order(symbol, 'Sell', size)
-
+    resp = place_order(symbol, 'sell', size)
     commission = (entry_price + exit_price) * size * COMMISSION_RATE
     profit = (exit_price - entry_price) * size - commission
-
     log_trade(entry_price, exit_price, size, profit)
     remove_open_position(position_id)
-
     margin_used = entry_price * size / LEVERAGE
     state = load_bot_state()
     new_usd = state['usd_balance'] + margin_used - commission
@@ -130,6 +119,5 @@ def execute_exit(symbol: str, position_id: int, exit_price: float):
         risk_per_trade=state['risk_per_trade'],
         in_trade=state['in_trade']
     )
-
     logger.info(f"Executed exit #{position_id}: profit={profit:.2f}, commission={commission:.2f}, new USD={new_usd:.2f}")
     return {'id': position_id, 'response': resp, 'profit': profit}
