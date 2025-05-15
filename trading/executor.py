@@ -32,7 +32,7 @@ def init_trading_client(symbol: str = "BTC/USDT"):
         'apiKey': BYBIT_API_KEY,
         'secret': BYBIT_API_SECRET,
         'enableRateLimit': True,
-        'options': {'defaultType': 'future'}  # use USDT-M linear futures
+        'options': {'defaultType': 'future'},
     })
     # Switch margin mode if supported
     if exchange.has.get('setMarginMode'):
@@ -45,33 +45,9 @@ def init_trading_client(symbol: str = "BTC/USDT"):
         try:
             exchange.setLeverage(LEVERAGE, symbol)
         except Exception as e:
-            logger.warning(f"Leverage setup failed (unsupported for symbol {symbol}): {e}")
-
-    return exchange(symbol: str = "BTC/USDT"):
-    """
-    Private Bybit client for trading:
-    - sets margin mode (if supported)
-    - attempts to set leverage (if supported)
-    """
-    exchange = ccxt.bybit({
-        'apiKey': BYBIT_API_KEY,
-        'secret': BYBIT_API_SECRET,
-        'enableRateLimit': True,
-    })
-    # Switch margin mode if supported
-    if exchange.has.get('setMarginMode'):
-        try:
-            exchange.setMarginMode(MARGIN_MODE, symbol)
-        except Exception as e:
-            logger.warning(f"Margin mode setup failed: {e}")
-    # Set leverage if supported
-    if exchange.has.get('setLeverage'):
-        try:
-            exchange.setLeverage(LEVERAGE, symbol)
-        except Exception as e:
-            logger.warning(f"Leverage setup failed (unsupported for symbol {symbol}): {e}")
-
+            logger.warning(f"Leverage setup failed for {symbol}: {e}")
     return exchange
+
 
 
 def place_order(symbol: str, side: str, amount: float, price: float = None):
