@@ -269,7 +269,8 @@ async def chart_command(update: Update, context: CallbackContext):
                 balance=usd_balance,
                 entry_price=entry_price,
                 stop_loss_pct=DEFAULT_SL_PCT,
-                risk_pct=risk_per_trade
+                # calculate_position_size expects percent, risk_per_trade is a fraction
+                risk_pct=risk_per_trade * 100
             )
             stop_price, take_price = calculate_sl_tp_levels(
                 entry_price, DEFAULT_SL_PCT, DEFAULT_TP_RATIO
