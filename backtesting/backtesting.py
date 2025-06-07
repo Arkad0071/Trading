@@ -1,10 +1,8 @@
-import pandas as pd
 import logging
 from trading.risk_manager import calculate_position_size, calculate_sl_tp_levels
 from utils.config import DEFAULT_RISK_PCT, DEFAULT_SL_PCT, DEFAULT_TP_RATIO
 
-# включаем вывод INFO-сообщений
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+# включаем вывод INFO-сообщений при запуске скрипта
 logger = logging.getLogger(__name__)
 
 class Backtester:
@@ -52,18 +50,21 @@ class Backtester:
                 )
                 # Стоп‑лосс
                 if row["low"] <= stop_price:
+                    self.balance += entry_price * position_size
                     self.simulate_trade(entry_price, stop_price, position_size, exit_type="SL")
                     in_position = False
                     logger.info(f"SL hit at {stop_price:.2f}")
                     continue
                 # Тейк‑профит
                 if row["high"] >= take_price:
+                    self.balance += entry_price * position_size
                     self.simulate_trade(entry_price, take_price, position_size, exit_type="TP")
                     in_position = False
                     logger.info(f"TP hit at {take_price:.2f}")
                     continue
                 # Закрытие по сигналу SELL
                 if sig == "SELL":
+                    self.balance += entry_price * position_size
                     self.simulate_trade(entry_price, price, position_size, exit_type="SELL")
                     in_position = False
                     logger.info(f"Close by SELL at {price:.2f}")
@@ -84,16 +85,23 @@ class Backtester:
                     tp_ratio=DEFAULT_TP_RATIO
                 )
                 in_position = True
+                self.balance -= entry_price * position_size
                 logger.info(
                     f"OPEN ▶ price={entry_price:.2f}, size={position_size:.6f}, "
                     f"SL={stop_price:.2f}, TP={take_price:.2f}"
                 )
+
+        if in_position:
+            self.balance += entry_price * position_size
+            last_close = df['close'].iloc[-1]
+            self.simulate_trade(entry_price, last_close, position_size, exit_type="EOD")
 
         logger.info(f"Бэктест завершен. Итоговый баланс: {self.balance:.2f}")
         return self.trades
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     from data.data_manager import get_candlestick_data
     from indicators.indicators import calculate_indicators
     from collections import Counter

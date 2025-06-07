@@ -6,7 +6,6 @@ from datetime import datetime
 import os
 import logging
 from dotenv import load_dotenv
-from utils.config import MARGIN_MODE, LEVERAGE
 from utils.config import BYBIT_API_KEY, BYBIT_API_SECRET
 
 
@@ -27,19 +26,29 @@ def init_exchange():
     return exchange
 
 
-def get_candlestick_data(symbol="BTC/USDT", timeframe="1h", since=None):
-    """
-    Получает данные OHLCV и возвращает их в виде DataFrame.
-    """
+def get_candlestick_data(symbol="BTC/USDT", timeframe="1h", since=None, limit=None):
+    """Получает данные OHLCV и возвращает их в виде DataFrame."""
     exchange = init_exchange()
+    all_rows = []
+    fetch_since = since
     try:
-        logger.info(f"Запрашиваю OHLCV для {symbol} ({timeframe}), since={since}")
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=500)
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        while True:
+            logger.info(f"Запрашиваю OHLCV для {symbol} ({timeframe}), since={fetch_since}")
+            batch = exchange.fetch_ohlcv(symbol, timeframe, since=fetch_since, limit=500)
+            if not batch:
+                break
+            all_rows.extend(batch)
+            if limit and len(all_rows) >= limit:
+                all_rows = all_rows[:limit]
+                break
+            if len(batch) < 500:
+                break
+            fetch_since = batch[-1][0] + 1
+        df = pd.DataFrame(all_rows, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['start_at'] = pd.to_datetime(df['timestamp'], unit='ms')
         logger.info(f"Получено {len(df)} строк данных для {symbol}.")
         return df
-    except Exception as e:
+    except Exception:
         logger.exception(f"Ошибка при получении OHLCV для {symbol}:")
         return pd.DataFrame()
 
