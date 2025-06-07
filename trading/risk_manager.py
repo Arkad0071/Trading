@@ -5,7 +5,7 @@ def calculate_position_size(balance, entry_price, stop_loss_pct, risk_pct):
     balance: текущий баланс в USDT
     entry_price: цена входа
     stop_loss_pct: допустимый SL в процентах от entry_price
-    risk_pct: процент риска от баланса (1–2%)
+    risk_pct: процент риска от баланса (например 1 для 1%)
     """
     dollar_risk = balance * (risk_pct / 100)
     distance_to_sl = entry_price * (stop_loss_pct / 100)

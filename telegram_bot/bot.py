@@ -171,7 +171,7 @@ async def monitor_callback(context: CallbackContext):
             balance=usd_balance,
             entry_price=entry_price,
             stop_loss_pct=DEFAULT_SL_PCT,
-            risk_pct=risk_pct
+            risk_pct=risk_pct * 100
         )
         stop_price, take_price = calculate_sl_tp_levels(
             entry_price=entry_price,
