@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 def calculate_rsi(df, period=14):
     """
-    Расчитывает Relative Strength Index (RSI) для DataFrame.
+    Рассчитывает Relative Strength Index (RSI) для DataFrame.
     """
     delta = df['close'].diff()
     gain = delta.where(delta > 0, 0)
