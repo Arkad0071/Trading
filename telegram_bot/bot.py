@@ -188,7 +188,9 @@ async def monitor_callback(context: CallbackContext):
             # закрываем все текущие позиции
             positions = get_open_positions()
             for pos in positions:
-                resp = execute_exit(pos["symbol"], pos["id"], entry_price)
+                df_latest = get_candlestick_data(pos["symbol"], "1m")
+                current_price = df_latest["close"].iloc[-1]
+                resp = execute_exit(pos["symbol"], pos["id"], current_price)
             await context.bot.send_message(chat_id, f"🔔 Авто-закрытие позиций выполнено.")
 
         # ─── 8) Формируем и отправляем уведомление ───────────────────
