@@ -207,7 +207,7 @@ async def monitor_callback(context: CallbackContext):
             f"📈 Вероятность: {prob:.2f}%\n"
             f"🔔 {signal.replace('_', ' ')}\n"
             f"• Risk: {risk_pct * 100:.2f}%\n"
-            f"• Объём: {position_size:.6f} BTC\n"  # ← вот она
+            f"• Объём: {position_size:.6f} BTC\n"
             f"• Entry: {entry_price:.2f}\n"
             f"• SL: {stop_price:.2f}\n"
             f"• TP: {take_price:.2f}"
