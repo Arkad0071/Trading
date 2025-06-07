@@ -14,8 +14,6 @@ from utils.config import BYBIT_API_KEY, BYBIT_API_SECRET
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-import ccxt
-
 def init_exchange():
     """
     Публичный клиент CCXT для fetch_ohlcv,
