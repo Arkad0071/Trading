@@ -392,7 +392,12 @@ async def monitor_trade_callback(context: CallbackContext):
         exit_price = tp
         commission = (entry_price + exit_price) * position_size * COMMISSION_RATE
         profit = (exit_price - entry_price) * position_size - commission
-        log_trade(...)
+        log_trade(
+            entry_price=entry_price,
+            exit_price=exit_price,
+            position_size=position_size,
+            profit=profit
+        )
         close_position()
         context.job.schedule_removal()
 
