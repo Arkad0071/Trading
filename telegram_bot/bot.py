@@ -18,14 +18,11 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from positions_db import load_bot_state, save_bot_state
 from positions_db import init_bot_state_table
 from positions_db import log_prediction, log_trade
-from positions_db import log_trade
 from positions_db import open_position, close_position
 from telegram.ext import JobQueue, Job
 import io
 import matplotlib.pyplot as plt
 from collections import Counter
-from trading.executor import execute_entry, execute_exit
-from positions_db import get_open_positions
 from trading.executor import init_trading_client, execute_entry, execute_exit
 from positions_db import get_open_positions
 
@@ -34,13 +31,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s:%(message)s",
 )
-
-logger = logging.getLogger(__name__)
-
-
-# Импортируем обратные вызовы для TensorFlow (если необходимо)
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-import joblib
 
 logger = logging.getLogger(__name__)
 
