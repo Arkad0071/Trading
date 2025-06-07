@@ -104,7 +104,12 @@ def execute_exit(symbol: str, position_id: int, exit_price: float):
     resp = place_order(symbol, 'sell', size)
     commission = (entry_price + exit_price) * size * COMMISSION_RATE
     profit = (exit_price - entry_price) * size - commission
-    log_trade(entry_price, exit_price, size, profit)
+    log_trade(
+        entry_price=entry_price,
+        exit_price=exit_price,
+        position_size=size,
+        profit=profit
+    )
     remove_open_position(position_id)
     margin_used = entry_price * size / LEVERAGE
     state = load_bot_state()
