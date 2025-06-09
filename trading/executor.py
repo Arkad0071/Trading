@@ -102,8 +102,9 @@ def execute_exit(symbol: str, position_id: int, exit_price: float):
     entry_price = pos['entry_price']
     size = pos['position_size']
     resp = place_order(symbol, 'sell', size)
-    commission = (entry_price + exit_price) * size * COMMISSION_RATE
-    profit = (exit_price - entry_price) * size - commission
+    entry_commission = entry_price * size * COMMISSION_RATE
+    exit_commission = exit_price * size * COMMISSION_RATE
+    profit = (exit_price - entry_price) * size - entry_commission - exit_commission
     log_trade(
         entry_price=entry_price,
         exit_price=exit_price,
@@ -113,7 +114,7 @@ def execute_exit(symbol: str, position_id: int, exit_price: float):
     remove_open_position(position_id)
     margin_used = entry_price * size / LEVERAGE
     state = load_bot_state()
-    new_usdt = state['usd_balance'] + margin_used - commission
+    new_usdt = state['usd_balance'] + margin_used + profit
     save_bot_state(
         usd_balance=new_usdt,
         btc_balance=state['btc_balance'],
@@ -124,7 +125,11 @@ def execute_exit(symbol: str, position_id: int, exit_price: float):
         risk_per_trade=state['risk_per_trade'],
         in_trade=state['in_trade']
     )
-    logger.info(f"Executed exit #{position_id}: profit={profit:.2f}, commission={commission:.2f}, new USD={new_usdt:.2f}")
+    logger.info(
+        f"Executed exit #{position_id}: profit={profit:.2f}, "
+        f"entry_commission={entry_commission:.2f}, "
+        f"exit_commission={exit_commission:.2f}, new USD={new_usdt:.2f}"
+    )
     return {'id': position_id, 'response': resp, 'profit': profit}
 
 
