@@ -108,7 +108,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     # 1) Загружаем данные
-    df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+    df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h", private=True)
     if df.empty:
         print("Не удалось получить данные для бэктеста")
         exit(1)

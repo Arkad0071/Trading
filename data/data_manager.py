@@ -6,29 +6,39 @@ from datetime import datetime
 import os
 import logging
 from dotenv import load_dotenv
-from utils.config import BYBIT_API_KEY, BYBIT_API_SECRET
+from utils.bybit_client import get_public_client, get_private_client
 
 
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-def init_exchange():
+def init_exchange(private: bool = False):
+    """Return a CCXT Bybit client.
+
+    Parameters
+    ----------
+    private : bool, optional
+        If ``True`` an authenticated client is created using API keys.
+        Otherwise a public client is returned. Defaults to ``False``.
     """
-    Публичный клиент CCXT для fetch_ohlcv,
-    без автоматического вызова fetch_currencies().
-    """
-    exchange = ccxt.bybit({
-        'enableRateLimit': True,
-    })
-    # Отключаем fetch_currencies, чтобы не вызывалось privateGetV5AssetCoinQueryInfo
-    exchange.options['fetchCurrencies'] = False
+
+    if private:
+        exchange = get_private_client()
+    else:
+        exchange = get_public_client()
     return exchange
 
 
-def get_candlestick_data(symbol="BTC/USDT", timeframe="1h", since=None, limit=None):
+def get_candlestick_data(
+    symbol: str = "BTC/USDT",
+    timeframe: str = "1h",
+    since: int | None = None,
+    limit: int | None = None,
+    private: bool = False,
+):
     """Получает данные OHLCV и возвращает их в виде DataFrame."""
-    exchange = init_exchange()
+    exchange = init_exchange(private=private)
     all_rows = []
     fetch_since = since
     try:
