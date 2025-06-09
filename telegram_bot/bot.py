@@ -97,6 +97,9 @@ async def stop_monitor(update: Update, context: CallbackContext):
         return
     for job in jobs:
         job.schedule_removal()
+    # сбрасываем сохранённый последний сигнал, чтобы при следующем запуске
+    # мониторинга уведомление пришло независимо от предыдущего состояния
+    context.chat_data.pop("last_signal", None)
     await update.message.reply_text("Мониторинг остановлен.")
 
 async def monitor_callback(context: CallbackContext):
