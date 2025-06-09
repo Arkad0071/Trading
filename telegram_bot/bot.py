@@ -6,7 +6,7 @@ import numpy as np
 from datetime import time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
-from utils.config import TOKEN, BYBIT_API_KEY, BYBIT_API_SECRET
+from utils.config import TOKEN
 from utils.config import DEFAULT_TP_RATIO, DEFAULT_SL_PCT, DEFAULT_RISK_PCT, COMMISSION_RATE
 from data.data_manager import get_candlestick_data
 from indicators.indicators import calculate_indicators
@@ -40,7 +40,7 @@ async def status_command(update: Update, context: CallbackContext):
         await update.message.reply_text("Получаю текущее состояние стратегии...")
 
         # Получаем исторические данные (например, последние 300 свечей)
-        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h", private=True)
         if df.empty:
             await update.message.reply_text("Не удалось получить данные для отображения состояния.")
             return
@@ -108,7 +108,7 @@ async def monitor_callback(context: CallbackContext):
         usd_balance = state["usd_balance"]
 
         # ─── 2) Получаем и подготавливаем данные ──────────────────────
-        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h", private=True)
         if df.empty:
             await context.bot.send_message(
                 chat_id,
@@ -189,7 +189,7 @@ async def monitor_callback(context: CallbackContext):
             # закрываем все текущие позиции
             positions = get_open_positions()
             for pos in positions:
-                df_latest = get_candlestick_data(pos["symbol"], "1m")
+                df_latest = get_candlestick_data(pos["symbol"], "1m", private=True)
                 current_price = df_latest["close"].iloc[-1]
                 resp = execute_exit(pos["symbol"], pos["id"], current_price)
             await context.bot.send_message(chat_id, f"🔔 Авто-закрытие позиций выполнено.")
@@ -232,7 +232,7 @@ async def chart_command(update: Update, context: CallbackContext):
 
         # 2) данные и индикаторы
 
-        df = get_candlestick_data("BTC/USDT", "1h")
+        df = get_candlestick_data("BTC/USDT", "1h", private=True)
         logger.info(f"[CHART] Получено строк: {len(df)}")
         if df.empty:
             return await update.message.reply_text("Нет данных для прогноза.")
@@ -360,7 +360,7 @@ async def monitor_trade_callback(context: CallbackContext):
     if not state.get("in_trade", False):
         return  # вы уже закрыли
 
-    price = get_candlestick_data("BTC/USDT","1m")["close"].iloc[-1]
+    price = get_candlestick_data("BTC/USDT", "1m", private=True)["close"].iloc[-1]
     sl = state["stop_loss"]
     tp = state["take_profit"]
 
@@ -410,7 +410,7 @@ async def auto_buy_cmd(update: Update, context: CallbackContext):
     symbol = "BTC/USDT"
 
     # 1) Получаем последнюю минутную цену
-    df = get_candlestick_data(symbol, "1m")
+    df = get_candlestick_data(symbol, "1m", private=True)
     if df.empty:
         return await update.message.reply_text("⚠️ Нет данных для открытия позиции.")
     price = df["close"].iloc[-1]
@@ -462,7 +462,7 @@ async def auto_sell_cmd(update: Update, context: CallbackContext):
     messages = []
     for pos in positions:
         # берём текущую цену
-        df = get_candlestick_data(pos["symbol"], "1m")
+        df = get_candlestick_data(pos["symbol"], "1m", private=True)
         price = df["close"].iloc[-1]
         resp = execute_exit(pos["symbol"], pos["id"], price)
         messages.append(f"🔴 Closed #{pos['id']}: exit={price:.2f}")
@@ -479,7 +479,7 @@ async def train_command(update: Update, context: CallbackContext):
         await update.message.reply_text("Начинаем обучение модели...")
 
         # 1. Получаем данные с биржи (или из базы)
-        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h", private=True)
         logger.info(f"[TRAIN] Получено строк: {len(df)}")
         if df.empty:
             await update.message.reply_text("Не удалось получить данные. Попробуйте позже.")
@@ -519,7 +519,7 @@ async def train_command(update: Update, context: CallbackContext):
 async def retrain_callback(context: CallbackContext):
     logger.info("=== Начинаю автоматическое переобучение ===")
     # 1) Получаем и готовим данные
-    df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+    df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h", private=True)
     logger.info(f"[TRAIN] Получено строк: {len(df)}")
     if df.empty:
         logger.error("Retrain: не удалось скачать данные")
@@ -548,7 +548,7 @@ async def backtest_command(update: Update, context: CallbackContext):
         await update.message.reply_text("Запуск бэктеста стратегии...")
 
         # Получаем исторические данные (например, последние 300 свечей)
-        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h")
+        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h", private=True)
         if df.empty:
             await update.message.reply_text("Не удалось получить исторические данные.")
             return
@@ -598,7 +598,7 @@ async def backtest_report(update: Update, context: CallbackContext):
     await update.message.reply_text("Запускаю полный отчёт по бэктесту…")
 
     # 1) Получаем данные и сигналы
-    df = get_candlestick_data("BTC/USDT", "1h")
+    df = get_candlestick_data("BTC/USDT", "1h", private=True)
     df = calculate_indicators(df)
     df["signal"] = df["RSI"].apply(lambda rsi: "BUY" if rsi < 30 else ("SELL" if rsi > 70 else "HOLD"))
 

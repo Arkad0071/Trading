@@ -34,3 +34,15 @@ The application expects the following variables in the `.env` file:
 | `BYBIT_MARGIN_MODE` | Margin mode for orders (`cross` or `isolated`). |
 | `BYBIT_LEVERAGE` | Leverage value to use when placing orders. |
 
+## Bybit API Client
+
+The module `utils.bybit_client` exposes two helper functions:
+
+* `get_public_client()` – returns a CCXT client for public endpoints.
+* `get_private_client()` – returns an authenticated client using the keys from
+  the `.env` file.
+
+Functions like `get_candlestick_data()` accept a `private` argument. Set it to
+`True` when you need to access data that requires authentication. The default is
+`False` which performs requests using the public client.
+
