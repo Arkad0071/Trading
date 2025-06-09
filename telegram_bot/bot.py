@@ -83,7 +83,8 @@ async def start_monitor(update: Update, context: CallbackContext):
         interval=15 * 60,      # 15 минут
         first=0,               # запуск сразу
         name=str(chat_id),     # имя Job = чат id
-        data=chat_id        # передаём chat_id в колбэк
+        data=chat_id,          # передаём chat_id в колбэк
+        chat_id=chat_id        # нужно для context.chat_data
     )
     await update.message.reply_text("Мониторинг запущен: буду присылать сигналы каждые 15 мин.")
 
