@@ -26,7 +26,8 @@ To compare several example strategies run:
 ```bash
 python backtesting/strategy_evaluator.py
 ```
-This script calculates indicators, applies a few built‑in strategies and prints the final balance for each.
+This script calculates indicators, runs about twenty built-in strategy variations
+and prints the final balance for each.
 
 ## Environment Variables
 
