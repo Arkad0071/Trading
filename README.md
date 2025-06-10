@@ -21,6 +21,13 @@ This project contains a cryptocurrency trading bot with a Telegram interface. It
 
 The backtesting engine can be executed directly using `python backtesting/backtesting.py`.
 
+To compare several example strategies run:
+
+```bash
+python backtesting/strategy_evaluator.py
+```
+This script calculates indicators, applies a few built‑in strategies and prints the final balance for each.
+
 ## Environment Variables
 
 The application expects the following variables in the `.env` file:
