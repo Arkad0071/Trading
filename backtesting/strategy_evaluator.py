@@ -18,7 +18,7 @@ def evaluate(symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 500):
     results = []
     for name, strategy in STRATEGIES.items():
         df_copy = strategy(df.copy())
-        bt = Backtester(initial_balance=10000)
+        bt = Backtester(initial_balance=100000)
         bt.run_backtest(df_copy, signal_column="signal")
         results.append((name, bt.balance))
 
