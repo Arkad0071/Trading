@@ -252,3 +252,68 @@ STRATEGIES = {
     "SMA + MACD": sma_macd_strategy,
 
 }
+
+# --- Programmatically generated strategies ---------------------------------
+
+from itertools import combinations
+
+COMBO_INDICATORS = [
+    "RSI",
+    "MACD",
+    "ATR",
+    "SMA",
+    "EMA",
+    "Bollinger",
+    "Stochastic",
+]
+
+
+def _create_combo_strategy(indicators: tuple[str, ...]):
+    """Return a strategy that requires all *indicators* to agree."""
+
+    def strategy(df: pd.DataFrame) -> pd.DataFrame:
+        df["signal"] = "HOLD"
+        buy = pd.Series(True, index=df.index)
+        sell = pd.Series(True, index=df.index)
+
+        for ind in indicators:
+            if ind == "RSI":
+                buy &= df["RSI"] < 30
+                sell &= df["RSI"] > 70
+            elif ind == "MACD":
+                buy &= df["MACD"] > df["MACD_signal"]
+                sell &= df["MACD"] < df["MACD_signal"]
+            elif ind == "ATR":
+                buy &= df["ATR"] > df["ATR"].shift()
+                sell &= df["ATR"] < df["ATR"].shift()
+            elif ind == "SMA":
+                buy &= df["close"] > df["SMA_20"]
+                sell &= df["close"] < df["SMA_20"]
+            elif ind == "EMA":
+                buy &= df["close"] > df["EMA_20"]
+                sell &= df["close"] < df["EMA_20"]
+            elif ind == "Bollinger":
+                buy &= df["close"] < df["BB_lower"]
+                sell &= df["close"] > df["BB_upper"]
+            elif ind == "Stochastic":
+                buy &= df["STOCH_K"] > df["STOCH_D"]
+                sell &= df["STOCH_K"] < df["STOCH_D"]
+
+        df.loc[buy, "signal"] = "BUY"
+        df.loc[sell, "signal"] = "SELL"
+        return df
+
+    return strategy
+
+
+def generate_all_indicator_strategies() -> dict[str, callable]:
+    """Return strategy functions for every non-empty indicator combination."""
+    strategies = {}
+    for r in range(1, len(COMBO_INDICATORS) + 1):
+        for combo in combinations(COMBO_INDICATORS, r):
+            name = " + ".join(combo)
+            strategies[name] = _create_combo_strategy(combo)
+    return strategies
+
+
+STRATEGIES.update(generate_all_indicator_strategies())
