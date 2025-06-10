@@ -26,12 +26,6 @@ To compare several example strategies run:
 ```bash
 python backtesting/strategy_evaluator.py
 ```
- p02xe1-codex/проанализировать-индикаторы-для-крипто-бота
-This script calculates indicators, runs about twenty built-in strategy variations
-and prints the final balance for each.
-
-This script calculates indicators, applies a few built‑in strategies and prints the final balance for each.
- main
 
 ## Environment Variables
 
