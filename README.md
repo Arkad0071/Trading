@@ -24,7 +24,7 @@ The backtesting engine can be executed directly using `python backtesting/backte
 To compare several example strategies run:
 
 ```bash
-python backtesting/strategy_evaluator.py
+ python -m backtesting.strategy_evaluator
 ```
 
 ## Environment Variables
