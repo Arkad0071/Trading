@@ -25,6 +25,7 @@ def bollinger_strategy(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+ p02xe1-codex/проанализировать-индикаторы-для-крипто-бота
 def macd_strategy(df: pd.DataFrame) -> pd.DataFrame:
     """Signals based solely on MACD crossovers."""
     df["signal"] = "HOLD"
@@ -250,4 +251,10 @@ STRATEGIES = {
     "All indicators": rsi_macd_bollinger_stochastic_strategy,
     "RSI + EMA": rsi_ema_strategy,
     "SMA + MACD": sma_macd_strategy,
+
+STRATEGIES = {
+    "RSI only": rsi_strategy,
+    "MACD + RSI": macd_rsi_strategy,
+    "Bollinger": bollinger_strategy,
+ main
 }
