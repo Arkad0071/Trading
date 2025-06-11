@@ -29,12 +29,12 @@ def evaluate(
         df_copy = strategy(df.copy())
         bt = Backtester(initial_balance=100000)
         bt.run_backtest(df_copy, signal_column="signal")
-        results.append((name, bt.balance))
+        results.append((name, bt.balance, len(bt.trades)))
 
     results.sort(key=lambda x: x[1], reverse=True)
     print("=== Strategy results ===")
-    for name, bal in results:
-        print(f"{name:12s} -> final balance: {bal:.2f}")
+    for name, bal, trades in results:
+        print(f"{name:12s} -> final balance: {bal:.2f}, trades: {trades}")
     if results:
         print(f"Best strategy: {results[0][0]}")
 
