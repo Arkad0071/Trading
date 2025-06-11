@@ -277,6 +277,11 @@ COMBO_INDICATORS = [
     "EMA",
     "Bollinger",
     "Stochastic",
+    "MOM",
+    "ROC",
+    "CCI",
+    "OBV",
+    "WILLR",
 ]
 
 
@@ -310,6 +315,21 @@ def _create_combo_strategy(indicators: tuple[str, ...]):
             elif ind == "Stochastic":
                 buy &= df["STOCH_K"] > df["STOCH_D"]
                 sell &= df["STOCH_K"] < df["STOCH_D"]
+            elif ind == "MOM":
+                buy &= df["MOM"] > 0
+                sell &= df["MOM"] < 0
+            elif ind == "ROC":
+                buy &= df["ROC"] > 0
+                sell &= df["ROC"] < 0
+            elif ind == "CCI":
+                buy &= df["CCI"] > 0
+                sell &= df["CCI"] < 0
+            elif ind == "OBV":
+                buy &= df["OBV"] > df["OBV"].shift()
+                sell &= df["OBV"] < df["OBV"].shift()
+            elif ind == "WILLR":
+                buy &= df["WILLR"] < -80
+                sell &= df["WILLR"] > -20
 
         df.loc[buy, "signal"] = "BUY"
         df.loc[sell, "signal"] = "SELL"

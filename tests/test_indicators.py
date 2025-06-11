@@ -8,13 +8,15 @@ def test_calculate_indicators_adds_columns():
         'open':  np.arange(1, 31),
         'high':  np.arange(2, 32),
         'low':   np.arange(0, 30),
-        'close': np.arange(1, 31)
+        'close': np.arange(1, 31),
+        'volume': np.ones(30)
     }
     df = pd.DataFrame(data)
     result = calculate_indicators(df)
     expected_cols = [
         'RSI', 'MACD', 'MACD_signal', 'ATR', 'SMA_20', 'EMA_20',
-        'BB_upper', 'BB_middle', 'BB_lower', 'STOCH_K', 'STOCH_D'
+        'BB_upper', 'BB_middle', 'BB_lower', 'STOCH_K', 'STOCH_D',
+        'MOM', 'ROC', 'CCI', 'OBV', 'WILLR'
     ]
     for col in expected_cols:
         assert col in result.columns
