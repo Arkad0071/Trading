@@ -14,7 +14,11 @@ This project contains a cryptocurrency trading bot with a Telegram interface. It
    ```bash
    pytest
    ```
-5. Start the Telegram bot:
+5. (Optional) download two years of historical BTC data for backtesting:
+   ```bash
+   python scripts/fetch_btc_history.py
+   ```
+6. Start the Telegram bot:
    ```bash
    python telegram_bot/bot.py
    ```

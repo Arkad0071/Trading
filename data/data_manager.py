@@ -2,7 +2,7 @@
 import ccxt
 import pandas as pd
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import logging
 from dotenv import load_dotenv
@@ -72,3 +72,32 @@ def save_to_db(df, symbol, timeframe, db_path="market_data.db"):
     df.to_sql("ohlcv", conn, if_exists="append", index=False)
     conn.close()
     logger.info(f"Сохранено {len(df)} записей для {symbol} в базу данных {db_path}.")
+
+
+def fetch_last_two_years_to_csv(
+    symbol: str = "BTC/USDT",
+    timeframe: str = "1h",
+    csv_path: str = "data/btc_usdt_1h_2y.csv",
+    private: bool = False,
+):
+    """Скачать последние 2 года данных и сохранить их в CSV."""
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(days=730)
+    since_ms = int(start_time.timestamp() * 1000)
+    df = get_candlestick_data(symbol, timeframe, since=since_ms, private=private)
+    if not df.empty:
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        df.to_csv(csv_path, index=False)
+        logger.info(f"Исторические данные сохранены в {csv_path}")
+    return df
+
+
+def load_ohlcv_from_csv(csv_path: str) -> pd.DataFrame:
+    """Загрузить OHLCV данные из CSV-файла."""
+    if not os.path.exists(csv_path):
+        logger.error(f"Файл {csv_path} не найден")
+        return pd.DataFrame()
+    df = pd.read_csv(csv_path)
+    if "start_at" in df.columns:
+        df["start_at"] = pd.to_datetime(df["start_at"])
+    return df
