@@ -49,8 +49,10 @@ async def status_command(update: Update, context: CallbackContext):
         df = calculate_indicators(df)
 
         # Генерируем простые сигналы по правилу (например, на основе RSI)
-        # Если RSI < 30, то сигнал BUY, если RSI > 70, то SELL, иначе HOLD
-        df["signal"] = df["RSI"].apply(lambda rsi: "BUY" if rsi < 30 else ("SELL" if rsi > 70 else "HOLD"))
+        # Если RSI < 40, то сигнал BUY, если RSI > 60, то SELL, иначе HOLD
+        df["signal"] = df["RSI"].apply(
+            lambda rsi: "BUY" if rsi < 40 else ("SELL" if rsi > 60 else "HOLD")
+        )
 
         # Создаем объект бэктестера и запускаем бэктест
         backtester = Backtester(initial_balance=10000, commission_rate=0.001)
@@ -559,9 +561,11 @@ async def backtest_command(update: Update, context: CallbackContext):
         # Здесь нам нужно сформировать сигналы для торговли.
         # Для простоты рассмотрим такой вариант: используем прогноз модели на каждую свечу.
         # Или можно применить простую стратегию, например:
-        # Если RSI < 30 -> BUY, если RSI > 70 -> SELL, иначе HOLD.
+        # Если RSI < 40 -> BUY, если RSI > 60 -> SELL, иначе HOLD.
         # В данном примере создадим столбец 'signal' с простыми правилами.
-        df["signal"] = df["RSI"].apply(lambda rsi: "BUY" if rsi < 30 else ("SELL" if rsi > 70 else "HOLD"))
+        df["signal"] = df["RSI"].apply(
+            lambda rsi: "BUY" if rsi < 40 else ("SELL" if rsi > 60 else "HOLD")
+        )
 
         # Создаем объект бэктестера
         backtester = Backtester(initial_balance=10000, commission_rate=0.001)
@@ -600,7 +604,9 @@ async def backtest_report(update: Update, context: CallbackContext):
     # 1) Получаем данные и сигналы
     df = get_candlestick_data("BTC/USDT", "1h", private=True)
     df = calculate_indicators(df)
-    df["signal"] = df["RSI"].apply(lambda rsi: "BUY" if rsi < 30 else ("SELL" if rsi > 70 else "HOLD"))
+    df["signal"] = df["RSI"].apply(
+        lambda rsi: "BUY" if rsi < 40 else ("SELL" if rsi > 60 else "HOLD")
+    )
 
     # 2) Прогоним бэктест
     backtester = Backtester(initial_balance=10000, commission_rate=0.001)
