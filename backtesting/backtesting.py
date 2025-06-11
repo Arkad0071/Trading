@@ -1,4 +1,5 @@
 import logging
+import os
 from trading.risk_manager import calculate_position_size, calculate_sl_tp_levels
 from backtesting.strategies import RSI_BUY_THRESHOLD, RSI_SELL_THRESHOLD
 from utils.config import DEFAULT_RISK_PCT, DEFAULT_SL_PCT, DEFAULT_TP_RATIO
@@ -103,13 +104,17 @@ class Backtester:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    from data.data_manager import get_candlestick_data
+    from data.data_manager import get_candlestick_data, load_ohlcv_from_csv
     from indicators.indicators import calculate_indicators
     from collections import Counter
     import matplotlib.pyplot as plt
 
     # 1) Загружаем данные
-    df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h", private=True)
+    csv_path = "data/btc_usdt_1h_2y.csv"
+    if os.path.exists(csv_path):
+        df = load_ohlcv_from_csv(csv_path)
+    else:
+        df = get_candlestick_data(symbol="BTC/USDT", timeframe="1h", private=True)
     if df.empty:
         print("Не удалось получить данные для бэктеста")
         exit(1)
