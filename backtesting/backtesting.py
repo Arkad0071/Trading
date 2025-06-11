@@ -1,5 +1,6 @@
 import logging
 from trading.risk_manager import calculate_position_size, calculate_sl_tp_levels
+from backtesting.strategies import RSI_BUY_THRESHOLD, RSI_SELL_THRESHOLD
 from utils.config import DEFAULT_RISK_PCT, DEFAULT_SL_PCT, DEFAULT_TP_RATIO
 
 # включаем вывод INFO-сообщений при запуске скрипта
@@ -118,7 +119,9 @@ if __name__ == "__main__":
 
     # 3) Формируем сигналы по RSI
     df["signal"] = df["RSI"].apply(
-        lambda rsi: "BUY" if rsi < 30 else ("SELL" if rsi > 70 else "HOLD")
+        lambda rsi: "BUY" if rsi < RSI_BUY_THRESHOLD else (
+            "SELL" if rsi > RSI_SELL_THRESHOLD else "HOLD"
+        )
     )
 
     # 4) Запускаем бэктест
