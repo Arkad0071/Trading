@@ -1,7 +1,10 @@
 # positions_db.py
 import sqlite3
+import logging
 from pathlib import Path
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = Path("market_data.db")
 
@@ -78,6 +81,20 @@ def load_bot_state():
     ''')
     row = c.fetchone()
     conn.close()
+    
+    if row is None:
+        # Return default values if no row found
+        return {
+            "usd_balance":    0.0,
+            "btc_balance":    0.0,
+            "entry_price":    0.0,
+            "stop_loss":      0.0,
+            "take_profit":    0.0,
+            "fraction":       0.3,
+            "risk_per_trade": 0.02,
+            "in_trade":       False,
+        }
+    
     return {
         "usd_balance":    row[0],
         "btc_balance":    row[1],
@@ -139,25 +156,41 @@ def close_position():
 
 
 def log_prediction(signal: str, probability: float, price: float):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO predictions (ts, signal, probability, price) VALUES (?, ?, ?, ?)",
-        (datetime.utcnow().isoformat(), signal, probability, price)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute(
+            "INSERT INTO predictions (ts, signal, probability, price) VALUES (?, ?, ?, ?)",
+            (datetime.utcnow().isoformat(), signal, probability, price)
+        )
+        conn.commit()
+    except Exception as e:
+        logger.error(f"Failed to log prediction: {e}")
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        if conn:
+            conn.close()
 
 
 def log_trade(entry_price: float, exit_price: float, position_size: float, profit: float):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO executed_trades (ts, entry_price, exit_price, position_size, profit) VALUES (?, ?, ?, ?, ?)",
-        (datetime.utcnow().isoformat(), entry_price, exit_price, position_size, profit)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute(
+            "INSERT INTO executed_trades (ts, entry_price, exit_price, position_size, profit) VALUES (?, ?, ?, ?, ?)",
+            (datetime.utcnow().isoformat(), entry_price, exit_price, position_size, profit)
+        )
+        conn.commit()
+    except Exception as e:
+        logger.error(f"Failed to log trade: {e}")
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        if conn:
+            conn.close()
 
 # Инициализация при импорте
 init_bot_state_table()
