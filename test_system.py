@@ -32,12 +32,13 @@ def test_basic_functionality():
         df = calculate_macd(df)
         df = calculate_atr(df)
         df = calculate_sma(df)
-        df = calculate_ema(df)
+        df = calculate_ema(df)  # EMA_20
+        df = calculate_ema(df, period=50)  # EMA_50 для стратегии
         df = calculate_bollinger_bands(df)
         print("✓ Базовые индикаторы рассчитаны")
         
         # 3. Проверяем наличие колонок
-        required_columns = ['RSI', 'MACD', 'MACD_signal', 'ATR', 'SMA_20', 'EMA_20', 'BB_upper', 'BB_lower']
+        required_columns = ['RSI', 'MACD', 'MACD_signal', 'ATR', 'SMA_20', 'EMA_20', 'EMA_50', 'BB_upper', 'BB_lower']
         missing_columns = [col for col in required_columns if col not in df.columns]
         
         if missing_columns:

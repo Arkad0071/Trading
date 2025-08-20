@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.patches import Rectangle
-import seaborn as sns
+# import seaborn as sns  # Временно отключено
 from datetime import datetime
 import logging
 
@@ -25,10 +25,12 @@ class StrategyVisualizer:
         
     def setup_plotting_style(self):
         """Настройка стиля графиков"""
-        plt.style.use('seaborn-v0_8-darkgrid')
-        sns.set_palette("husl")
+        # plt.style.use('seaborn-v0_8-darkgrid')  # Временно отключено
+        # sns.set_palette("husl")  # Временно отключено
         plt.rcParams['figure.figsize'] = (16, 12)
         plt.rcParams['font.size'] = 10
+        plt.rcParams['axes.grid'] = True
+        plt.rcParams['grid.alpha'] = 0.3
         
     def plot_strategy_overview(self, save_path=None):
         """
