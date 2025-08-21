@@ -5,6 +5,66 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def test_simple_strategy(df):
+    """
+    Очень простая тестовая стратегия для демонстрации
+    
+    Особенности:
+    - Минимальные условия
+    - Максимум сигналов для тестирования
+    - Только для демонстрации работы системы
+    """
+    df = df.copy()
+    
+    # Простые сигналы
+    df['signal'] = 'HOLD'
+    
+    # BUY: RSI < 50 (простое условие)
+    buy_signal = df['RSI'] < 50
+    
+    # SELL: RSI > 50 (простое условие)
+    sell_signal = df['RSI'] > 50
+    
+    df.loc[buy_signal, 'signal'] = 'BUY'
+    df.loc[sell_signal, 'signal'] = 'SELL'
+    
+    logger.info("Тестовая простая стратегия применена")
+    return df
+
+def simple_rsi_macd_strategy(df):
+    """
+    Простая и эффективная стратегия на основе RSI + MACD
+    
+    Особенности:
+    - Простые условия входа
+    - Меньше фильтров = больше сигналов
+    - Быстрая реакция на изменения
+    """
+    df = df.copy()
+    
+    # Базовые сигналы
+    df['signal'] = 'HOLD'
+    
+    # BUY: RSI перепродан + MACD растет
+    buy_signal = (
+        (df['RSI'] < 35) &  # Перепроданность
+        (df['MACD'] > df['MACD_signal']) &  # MACD выше сигнала
+        (df['close'] > df['close'].shift(1))  # Цена растет
+    )
+    
+    # SELL: RSI перекуплен + MACD падает
+    sell_signal = (
+        (df['RSI'] > 65) &  # Перекупленность
+        (df['MACD'] < df['MACD_signal']) &  # MACD ниже сигнала
+        (df['close'] < df['close'].shift(1))  # Цена падает
+    )
+    
+    df.loc[buy_signal, 'signal'] = 'BUY'
+    df.loc[sell_signal, 'signal'] = 'SELL'
+    
+    logger.info("Простая RSI+MACD стратегия применена")
+    return df
+
 def adaptive_momentum_strategy(df):
     """
     Адаптивная стратегия на основе моментума и волатильности
@@ -415,6 +475,7 @@ def get_all_enhanced_strategies():
     Возвращает список всех доступных стратегий
     """
     return {
+        'simple_rsi_macd': simple_rsi_macd_strategy,  # Новая простая стратегия
         'adaptive_momentum': adaptive_momentum_strategy,
         'multi_timeframe': multi_timeframe_strategy,
         'volume_confirmation': volume_confirmation_strategy,

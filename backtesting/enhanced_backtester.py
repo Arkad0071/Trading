@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns  # Временно отключено
 
 logger = logging.getLogger(__name__)
 
