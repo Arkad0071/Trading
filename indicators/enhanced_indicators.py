@@ -278,7 +278,7 @@ def calculate_volatility_indicators(df, period=20):
     # Parkinson Volatility (использует high/low)
     df['parkinson_volatility'] = np.sqrt(
         (1 / (4 * np.log(2))) * 
-        ((np.log(df['high'] / df['low']) ** 2).rolling(window=period).mean()
+        (np.log(df['high'] / df['low']) ** 2).rolling(window=period).mean()
     ) * np.sqrt(252) * 100
     
     # Garman-Klass Volatility - исправленная версия
