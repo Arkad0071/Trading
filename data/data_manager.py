@@ -101,3 +101,28 @@ def load_ohlcv_from_csv(csv_path: str) -> pd.DataFrame:
     if "start_at" in df.columns:
         df["start_at"] = pd.to_datetime(df["start_at"])
     return df
+
+def save_ohlcv_to_csv(df: pd.DataFrame, csv_path: str) -> bool:
+    """
+    Сохраняет DataFrame с OHLCV данными в CSV файл.
+    
+    Args:
+        df: DataFrame с данными OHLCV
+        csv_path: Путь к CSV файлу
+        
+    Returns:
+        bool: True если сохранение прошло успешно, False иначе
+    """
+    try:
+        # Создаем директорию если её нет
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        
+        # Сохраняем в CSV
+        df.to_csv(csv_path, index=False)
+        
+        logger.info(f"Данные успешно сохранены в {csv_path}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении данных в {csv_path}: {e}")
+        return False
