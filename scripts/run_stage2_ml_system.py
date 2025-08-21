@@ -43,7 +43,7 @@ class MLTradingSystem:
         self.best_strategies = []
         self.signal_generator = None
         self.backtester = EnhancedBacktester(initial_balance=10000, commission_rate=0.001)
-        self.visualizer = StrategyVisualizer()
+        self.visualizer = None  # Инициализируем позже, когда будут данные
         
     def load_and_prepare_data(self, use_real_data=False, symbol='BTC/USDT', timeframe='1h'):
         """
@@ -79,6 +79,9 @@ class MLTradingSystem:
             
             print(f"✓ Данные загружены: {len(df)} записей")
             print(f"  Период: {df.index[0] if hasattr(df.index, '__getitem__') else 'N/A'} - {df.index[-1] if hasattr(df.index, '__getitem__') else 'N/A'}")
+            
+            # Инициализируем визуализатор с данными
+            self.visualizer = StrategyVisualizer(df)
             
             return df
             
