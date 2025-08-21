@@ -281,7 +281,7 @@ def calculate_volatility_indicators(df, period=20):
         ((np.log(df['high'] / df['low']) ** 2).rolling(window=period).mean()
     ) * np.sqrt(252) * 100
     
-    # Garman-Klass Volatility
+    # Garman-Klass Volatility - исправленная версия
     df['garman_klass_volatility'] = np.sqrt(
         (0.5 * (np.log(df['high'] / df['low']) ** 2) - 
          (2 * np.log(2) - 1) * (np.log(df['close'] / df['open']) ** 2)
