@@ -26,6 +26,18 @@ from collections import Counter
 from trading.executor import init_trading_client, execute_entry, execute_exit
 from positions_db import get_open_positions
 
+# Импортируем новые команды ML мозга
+try:
+    from enhanced_commands import (
+        enhanced_prediction_command, train_ml_brain_command, brain_status_command,
+        enhanced_auto_trade_command, start_enhanced_monitoring_command, 
+        stop_enhanced_monitoring_command, enhanced_monitor_callback
+    )
+    ENHANCED_COMMANDS_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Улучшенные команды недоступны: {e}")
+    ENHANCED_COMMANDS_AVAILABLE = False
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -67,7 +79,17 @@ async def status_command(update: Update, context: CallbackContext):
         await update.message.reply_text(f"Ошибка при получении статуса: {e}")
 
 async def start(update: Update, context: CallbackContext):
-    await update.message.reply_text("Привет! Я торговый бот. Доступные команды: /train, /chart, /backtest, /status.")
+    basic_commands = "/train, /chart, /backtest, /status, /monitor"
+    enhanced_commands = ""
+    
+    if ENHANCED_COMMANDS_AVAILABLE:
+        enhanced_commands = "\n\n🧠 **ML МОЗГ КОМАНДЫ:**\n/brain_status, /train_brain, /enhanced_predict, /enhanced_auto_trade, /start_enhanced_monitor"
+    
+    await update.message.reply_text(
+        f"🤖 **Привет! Я продвинутый торговый бот с ML мозгом!**\n\n"
+        f"📋 **Базовые команды:** {basic_commands}{enhanced_commands}",
+        parse_mode='Markdown'
+    )
 
 async def start_monitor(update: Update, context: CallbackContext):
     """Запускает фоновую проверку сигнала каждые 15 минут."""
@@ -683,6 +705,8 @@ async def backtest_report(update: Update, context: CallbackContext):
 
 def main():
     application = Application.builder().token(TOKEN).build()
+    
+    # Базовые команды
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("train", train_command))
     application.add_handler(CommandHandler("chart", chart_command))
@@ -696,6 +720,16 @@ def main():
     application.add_handler(CommandHandler("auto_buy", auto_buy_cmd))
     application.add_handler(CommandHandler("auto_sell", auto_sell_cmd))
     application.add_handler(CommandHandler("close_all", close_all_cmd))
+    
+    # Улучшенные ML команды (если доступны)
+    if ENHANCED_COMMANDS_AVAILABLE:
+        application.add_handler(CommandHandler("brain_status", brain_status_command))
+        application.add_handler(CommandHandler("train_brain", train_ml_brain_command))
+        application.add_handler(CommandHandler("enhanced_predict", enhanced_prediction_command))
+        application.add_handler(CommandHandler("enhanced_auto_trade", enhanced_auto_trade_command))
+        application.add_handler(CommandHandler("start_enhanced_monitor", start_enhanced_monitoring_command))
+        application.add_handler(CommandHandler("stop_enhanced_monitor", stop_enhanced_monitoring_command))
+        print("✅ Улучшенные ML команды добавлены")
 
     # планируем retrain_callback на 00:00 UTC каждый день
     application.job_queue.run_daily(
