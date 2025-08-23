@@ -28,14 +28,17 @@ async def enhanced_prediction_command(update: Update, context: CallbackContext):
     try:
         await update.message.reply_text("🧠 Запуск продвинутого ML анализа...")
         
-        # Получаем текущие данные
-        df = get_candlestick_data("BTC/USDT", "1h", limit=200, private=True)
+        # Получаем СВЕЖИЕ данные (последние 100 минут)
+        df = get_candlestick_data("BTC/USDT", "1m", limit=100, private=True)
         if df.empty:
             await update.message.reply_text("❌ Не удалось получить данные для анализа")
             return
         
         # Получаем улучшенный прогноз
         prediction = get_enhanced_prediction(df)
+        
+        # Время последних данных
+        last_data_time = df.index[-1]
         
         # Формируем ответ
         signal = prediction['signal']
@@ -75,21 +78,22 @@ async def enhanced_prediction_command(update: Update, context: CallbackContext):
         }.get(signal, '❓')
         
         message = (
-            f"{emoji} **ПРОДВИНУТЫЙ ML ПРОГНОЗ** {emoji}\n\n"
-            f"📊 **Анализ:**\n"
+            f"{emoji} ПРОДВИНУТЫЙ ML ПРОГНОЗ {emoji}\n\n"
+            f"📊 Анализ:\n"
             f"• Сигнал: {signal}\n"
             f"• Уверенность: {confidence:.1%}\n"
-            f"• Текущая цена: ${current_price:,.2f}\n\n"
-            f"⚙️ **Рекомендуемые параметры:**\n"
+            f"• Текущая цена: ${current_price:,.2f}\n"
+            f"• Время данных: {last_data_time.strftime('%H:%M:%S UTC')}\n\n"
+            f"⚙️ Рекомендуемые параметры:\n"
             f"• Плечо: {leverage}x\n"
             f"• Размер позиции: {position_size:.6f} BTC\n"
             f"• Stop Loss: ${stop_price:,.2f} ({sl_pct}%)\n"
             f"• Take Profit: ${take_price:,.2f} ({tp_ratio}x)\n\n"
-            f"🧠 **Обоснование:**\n{reasoning}\n\n"
+            f"🧠 Обоснование:\n{reasoning}\n\n"
             f"⚡ Для автоматической торговли используйте /enhanced_auto_trade"
         )
         
-        await update.message.reply_text(message, parse_mode='Markdown')
+        await update.message.reply_text(message, )
         
     except Exception as e:
         logger.error(f"Ошибка в enhanced_prediction: {e}")
@@ -158,26 +162,26 @@ async def brain_status_command(update: Update, context: CallbackContext):
         strategies_count = len(ml_brain.best_strategies)
         
         message = (
-            f"🧠 **СТАТУС ML МОЗГА**\n\n"
-            f"🤖 **Модели:**\n"
+            f"🧠 СТАТУС ML МОЗГА\n\n"
+            f"🤖 Модели:\n"
             f"• ML модель: {'✅ Обучена' if model_exists else '❌ Не обучена'}\n"
             f"• Скейлер: {'✅ Готов' if scaler_exists else '❌ Отсутствует'}\n"
             f"• Признаки: {'✅ Сохранены' if features_exist else '❌ Отсутствуют'}\n\n"
-            f"📊 **Данные:**\n"
+            f"📊 Данные:\n"
             f"• Загружено таймфреймов: {len(cached_timeframes)}\n"
             f"• Доступные: {', '.join(cached_timeframes) if cached_timeframes else 'Нет'}\n\n"
-            f"🎯 **Стратегии:**\n"
+            f"🎯 Стратегии:\n"
             f"• Найдено лучших: {strategies_count}\n\n"
         )
         
         if model_exists:
-            message += "✅ **Готов к работе!** Используйте /enhanced_predict\n"
+            message += "✅ Готов к работе! Используйте /enhanced_predict\n"
         else:
-            message += "⚠️ **Требуется обучение!** Запустите /train_brain\n"
+            message += "⚠️ Требуется обучение! Запустите /train_brain\n"
         
-        message += "\n📋 **Доступные команды:**\n• /enhanced_predict - Улучшенный прогноз\n• /train_brain - Обучить мозг\n• /enhanced_auto_trade - Автоторговля"
+        message += "\n📋 Доступные команды:\n• /enhanced_predict - Улучшенный прогноз\n• /train_brain - Обучить мозг\n• /enhanced_auto_trade - Автоторговля"
         
-        await update.message.reply_text(message, parse_mode='Markdown')
+        await update.message.reply_text(message)
         
     except Exception as e:
         logger.error(f"Ошибка в brain_status: {e}")
@@ -202,7 +206,7 @@ async def enhanced_auto_trade_command(update: Update, context: CallbackContext):
         # Проверяем уверенность
         if confidence < 0.6:
             await update.message.reply_text(
-                f"⚠️ **Низкая уверенность прогноза**\n"
+                f"⚠️ Низкая уверенность прогноза\n"
                 f"Уверенность: {confidence:.1%} (требуется >60%)\n"
                 f"Сигнал: {signal}\n\n"
                 f"Автоматическая торговля отменена для безопасности."
@@ -244,19 +248,19 @@ async def enhanced_auto_trade_command(update: Update, context: CallbackContext):
                 )
                 
                 message = (
-                    f"✅ **ПОЗИЦИЯ ОТКРЫТА С ML МОЗГОМ!**\n\n"
-                    f"📊 **Детали:**\n"
+                    f"✅ ПОЗИЦИЯ ОТКРЫТА С ML МОЗГОМ!\n\n"
+                    f"📊 Детали:\n"
                     f"• Сигнал: {signal} ({confidence:.1%})\n"
                     f"• Плечо: {leverage}x\n"
                     f"• Размер: {position_size:.6f} BTC\n"
                     f"• Вход: ${current_price:,.2f}\n"
                     f"• Stop Loss: ${stop_price:,.2f}\n"
                     f"• Take Profit: ${take_price:,.2f}\n\n"
-                    f"🤖 **Ответ биржи:**\n{response}"
+                    f"🤖 Ответ биржи:\n{response}"
                 )
                 
             except Exception as e:
-                message = f"❌ **Ошибка выполнения сделки:**\n{e}"
+                message = f"❌ Ошибка выполнения сделки:\n{e}"
                 
         elif signal in ['STRONG_SELL', 'SELL']:
             try:
@@ -272,28 +276,28 @@ async def enhanced_auto_trade_command(update: Update, context: CallbackContext):
                         responses.append(resp)
                     
                     message = (
-                        f"🔴 **ПОЗИЦИИ ЗАКРЫТЫ С ML МОЗГОМ!**\n\n"
-                        f"📊 **Детали:**\n"
+                        f"🔴 ПОЗИЦИИ ЗАКРЫТЫ С ML МОЗГОМ!\n\n"
+                        f"📊 Детали:\n"
                         f"• Сигнал: {signal} ({confidence:.1%})\n"
                         f"• Закрыто позиций: {len(positions)}\n"
                         f"• Цена закрытия: ${current_price:,.2f}\n\n"
-                        f"🤖 **Ответы биржи:**\n" + "\n".join(responses)
+                        f"🤖 Ответы биржи:\n" + "\n".join(responses)
                     )
                 else:
-                    message = f"⚠️ **Нет открытых позиций для закрытия**\nСигнал: {signal} ({confidence:.1%})"
+                    message = f"⚠️ Нет открытых позиций для закрытия\nСигнал: {signal} ({confidence:.1%})"
                     
             except Exception as e:
-                message = f"❌ **Ошибка закрытия позиций:**\n{e}"
+                message = f"❌ Ошибка закрытия позиций:\n{e}"
                 
         else:
             message = (
-                f"⏸️ **УДЕРЖАНИЕ ПОЗИЦИИ**\n\n"
+                f"⏸️ УДЕРЖАНИЕ ПОЗИЦИИ\n\n"
                 f"• Сигнал: {signal} ({confidence:.1%})\n"
                 f"• Действие: Никаких операций\n"
                 f"• Причина: Слабый сигнал или неопределенность"
             )
         
-        await update.message.reply_text(message, parse_mode='Markdown')
+        await update.message.reply_text(message, )
         
     except Exception as e:
         logger.error(f"Ошибка в enhanced_auto_trade: {e}")
@@ -323,14 +327,14 @@ async def start_enhanced_monitoring_command(update: Update, context: CallbackCon
         )
         
         message = (
-            "🧠 **УЛУЧШЕННЫЙ МОНИТОРИНГ ЗАПУЩЕН!**\n\n"
+            "🧠 УЛУЧШЕННЫЙ МОНИТОРИНГ ЗАПУЩЕН!\n\n"
             "🔄 Частота: каждые 10 минут\n"
             "🤖 Анализ: продвинутый ML мозг\n"
             "⚡ Автоторговля: при высокой уверенности\n\n"
             "Для остановки используйте /stop_enhanced_monitor"
         )
         
-        await update.message.reply_text(message, parse_mode='Markdown')
+        await update.message.reply_text(message, )
         
     except Exception as e:
         logger.error(f"Ошибка запуска enhanced мониторинга: {e}")
@@ -351,7 +355,7 @@ async def stop_enhanced_monitoring_command(update: Update, context: CallbackCont
         for job in jobs:
             job.schedule_removal()
         
-        await update.message.reply_text("🛑 **Улучшенный мониторинг остановлен**")
+        await update.message.reply_text("🛑 Улучшенный мониторинг остановлен")
         
     except Exception as e:
         logger.error(f"Ошибка остановки enhanced мониторинга: {e}")
@@ -392,24 +396,24 @@ async def enhanced_monitor_callback(context: CallbackContext):
         }.get(signal, '❓')
         
         message = (
-            f"{emoji} **ML МОЗГ АЛЕРТ** {emoji}\n\n"
+            f"{emoji} ML МОЗГ АЛЕРТ {emoji}\n\n"
             f"⏰ {datetime.now().strftime('%H:%M:%S')}\n"
-            f"📊 Сигнал: **{signal}**\n"
-            f"🎯 Уверенность: **{confidence:.1%}**\n"
-            f"💰 Цена: **${current_price:,.2f}**\n\n"
+            f"📊 Сигнал: {signal}\n"
+            f"🎯 Уверенность: {confidence:.1%}\n"
+            f"💰 Цена: ${current_price:,.2f}\n\n"
             f"🧠 {reasoning}\n\n"
         )
         
         # Автоматическая торговля при высокой уверенности
         if confidence >= 0.75 and signal in ['STRONG_BUY', 'BUY', 'STRONG_SELL', 'SELL']:
-            message += "⚡ **АВТОТОРГОВЛЯ АКТИВИРОВАНА!**\n"
+            message += "⚡ АВТОТОРГОВЛЯ АКТИВИРОВАНА!\n"
             # Здесь можно добавить автоматическое выполнение сделок
         elif confidence >= 0.6:
             message += "💡 Рекомендуется ручная проверка\n"
         
         message += f"\nИспользуйте /enhanced_auto_trade для торговли"
         
-        await context.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
+        await context.bot.send_message(chat_id=chat_id, text=message, )
         
     except Exception as e:
         logger.error(f"Ошибка в enhanced_monitor_callback: {e}")

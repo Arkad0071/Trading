@@ -653,7 +653,7 @@ def get_enhanced_prediction(current_data: pd.DataFrame = None) -> Dict:
         # Загружаем текущие данные
         try:
             from data.data_manager import get_candlestick_data
-            current_data = get_candlestick_data("BTC/USDT", "1h", limit=200, private=True)
+            current_data = get_candlestick_data("BTC/USDT", "1m", limit=100, private=True)
         except Exception as e:
             logger.error(f"Не удалось загрузить данные: {e}")
             return {
