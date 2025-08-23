@@ -87,12 +87,11 @@ async def start(update: Update, context: CallbackContext):
     enhanced_commands = ""
     
     if ENHANCED_COMMANDS_AVAILABLE:
-        enhanced_commands = "\n\n🧠 **ML МОЗГ КОМАНДЫ:**\n/brain_status, /train_brain, /enhanced_predict, /enhanced_auto_trade, /start_enhanced_monitor"
+        enhanced_commands = "\n\n🧠 ML МОЗГ КОМАНДЫ:\n/brain_status, /train_brain, /enhanced_predict, /enhanced_auto_trade, /start_enhanced_monitor"
     
     await update.message.reply_text(
-        f"🤖 **Привет! Я продвинутый торговый бот с ML мозгом!**\n\n"
-        f"📋 **Базовые команды:** {basic_commands}{enhanced_commands}",
-        parse_mode='Markdown'
+        f"🤖 Привет! Я продвинутый торговый бот с ML мозгом!\n\n"
+        f"📋 Базовые команды: {basic_commands}{enhanced_commands}"
     )
 
 async def start_monitor(update: Update, context: CallbackContext):
