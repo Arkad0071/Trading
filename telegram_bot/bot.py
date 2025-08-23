@@ -34,8 +34,9 @@ from positions_db import get_open_positions
 try:
     from enhanced_commands import (
         enhanced_prediction_command, train_ml_brain_command, brain_status_command,
-        enhanced_auto_trade_command, start_enhanced_monitoring_command, 
-        stop_enhanced_monitoring_command, enhanced_monitor_callback
+        enhanced_auto_trade_command, start_enhanced_monitoring_command,
+        stop_enhanced_monitoring_command, enhanced_monitor_callback,
+        restart_bot_command, update_code_command, system_status_command
     )
     ENHANCED_COMMANDS_AVAILABLE = True
 except ImportError as e:
@@ -732,7 +733,11 @@ def main():
         application.add_handler(CommandHandler("enhanced_auto_trade", enhanced_auto_trade_command))
         application.add_handler(CommandHandler("start_enhanced_monitor", start_enhanced_monitoring_command))
         application.add_handler(CommandHandler("stop_enhanced_monitor", stop_enhanced_monitoring_command))
+        application.add_handler(CommandHandler("restart_bot", restart_bot_command))
+        application.add_handler(CommandHandler("update_code", update_code_command))
+        application.add_handler(CommandHandler("system_status", system_status_command))
         print("✅ Улучшенные ML команды добавлены")
+        print("✅ Системные команды добавлены")
 
     # планируем retrain_callback на 00:00 UTC каждый день
     application.job_queue.run_daily(
