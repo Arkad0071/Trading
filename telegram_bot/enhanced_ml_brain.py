@@ -659,7 +659,7 @@ def get_enhanced_prediction(current_data: pd.DataFrame = None) -> Dict:
             return {
                 'signal': 'HOLD',
                 'confidence': 0.0,
-                'reasoning': 'Нет данных',
+                'reasoning': 'Нет данных для анализа',
                 'recommended_leverage': 1,
                 'stop_loss_pct': 2.0,
                 'take_profit_ratio': 2.0
@@ -671,4 +671,12 @@ def run_brain_training() -> Dict:
     """
     Функция для запуска обучения ML мозга
     """
-    return ml_brain.run_full_analysis()
+    try:
+        return ml_brain.run_full_analysis()
+    except Exception as e:
+        logger.error(f"Ошибка обучения ML мозга: {e}")
+        return {
+            'status': 'error',
+            'error': f'Ошибка обучения: {e}',
+            'timestamp': datetime.now()
+        }

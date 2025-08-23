@@ -1,5 +1,9 @@
 # telegram_bot/bot.py
 import os
+import sys
+# Добавляем корневую папку проекта в путь
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import logging
 import joblib
 import numpy as np
