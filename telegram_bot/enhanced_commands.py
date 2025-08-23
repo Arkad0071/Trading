@@ -110,8 +110,8 @@ async def train_ml_brain_command(update: Update, context: CallbackContext):
         
         if status == 'completed':
             message = (
-                f"🎉 **ОБУЧЕНИЕ ML МОЗГА ЗАВЕРШЕНО!**\n\n"
-                f"📊 **Результаты:**\n"
+                f"🎉 ОБУЧЕНИЕ ML МОЗГА ЗАВЕРШЕНО!\n\n"
+                f"📊 Результаты:\n"
                 f"• Данные загружены: {'✅' if results.get('data_loaded') else '❌'}\n"
                 f"• Индикаторы рассчитаны: {'✅' if results.get('indicators_calculated') else '❌'}\n"
                 f"• Найдено стратегий: {results.get('strategies_found', 0)}\n"
@@ -122,7 +122,7 @@ async def train_ml_brain_command(update: Update, context: CallbackContext):
             best_params = results.get('best_parameters', {})
             if best_params:
                 message += (
-                    f"🎯 **Оптимальные параметры:**\n"
+                    f"🎯 Оптимальные параметры:\n"
                     f"• Плечо: {best_params.get('leverage', 1)}x\n"
                     f"• Stop Loss: {best_params.get('stop_loss_pct', 2.0)}%\n"
                     f"• Take Profit: {best_params.get('take_profit_ratio', 2.0)}x\n\n"
@@ -131,11 +131,11 @@ async def train_ml_brain_command(update: Update, context: CallbackContext):
             message += "✨ Теперь используйте /enhanced_predict для улучшенных прогнозов!"
             
         elif status == 'error':
-            message = f"❌ **ОШИБКА ОБУЧЕНИЯ:**\n{results.get('error', 'Неизвестная ошибка')}"
+            message = f"❌ ОШИБКА ОБУЧЕНИЯ:\n{results.get('error', 'Неизвестная ошибка')}"
         else:
-            message = f"⚠️ **ОБУЧЕНИЕ НЕ ЗАВЕРШЕНО:**\nСтатус: {status}"
+            message = f"⚠️ ОБУЧЕНИЕ НЕ ЗАВЕРШЕНО:\nСтатус: {status}"
         
-        await update.message.reply_text(message, parse_mode='Markdown')
+        await update.message.reply_text(message)
         
     except Exception as e:
         logger.error(f"Ошибка в train_ml_brain: {e}")
