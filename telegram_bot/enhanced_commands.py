@@ -9,6 +9,9 @@ import asyncio
 import pandas as pd
 import numpy as np
 import logging
+import os
+import sys
+import subprocess
 from datetime import datetime
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -421,3 +424,121 @@ async def enhanced_monitor_callback(context: CallbackContext):
             chat_id=chat_id,
             text=f"❌ Ошибка в улучшенном мониторинге: {e}"
         )
+
+async def restart_bot_command(update: Update, context: CallbackContext):
+    """
+    Команда /restart_bot - перезапуск бота для принятия новых изменений
+    """
+    try:
+        await update.message.reply_text("🔄 Перезапуск бота для обновления...")
+        
+        # Получаем путь к текущему скрипту
+        current_script = os.path.abspath(sys.argv[0])
+        
+        # Создаем скрипт перезапуска
+        restart_script = """#!/bin/bash
+echo "🔄 Остановка текущего бота..."
+pkill -f "python.*bot.py"
+sleep 3
+
+echo "📥 Обновление кода из Git..."
+cd /opt/my_trading_bot
+git pull origin main
+
+echo "🚀 Запуск обновленного бота..."
+nohup python3 telegram_bot/bot.py > /dev/null 2>&1 &
+
+echo "✅ Бот перезапущен с обновлениями!"
+"""
+        
+        # Сохраняем скрипт
+        with open('/tmp/restart_bot.sh', 'w') as f:
+            f.write(restart_script)
+        
+        # Делаем скрипт исполняемым
+        os.chmod('/tmp/restart_bot.sh', 0o755)
+        
+        await update.message.reply_text(
+            "✅ Команда перезапуска подготовлена!\n\n"
+            "🔄 Бот будет:\n"
+            "1. Остановлен\n"
+            "2. Обновлен из Git\n"
+            "3. Перезапущен\n\n"
+            "⏳ Запуск через 5 секунд..."
+        )
+        
+        # Запускаем перезапуск через 5 секунд
+        await asyncio.sleep(5)
+        
+        # Выполняем скрипт перезапуска
+        subprocess.Popen(['/bin/bash', '/tmp/restart_bot.sh'], 
+                        stdout=subprocess.DEVNULL, 
+                        stderr=subprocess.DEVNULL)
+        
+        # Завершаем текущий процесс
+        os._exit(0)
+        
+    except Exception as e:
+        logger.error(f"Ошибка при перезапуске: {e}")
+        await update.message.reply_text(f"❌ Ошибка перезапуска: {e}")
+
+async def update_code_command(update: Update, context: CallbackContext):
+    """
+    Команда /update_code - обновление кода из Git без перезапуска
+    """
+    try:
+        await update.message.reply_text("📥 Обновление кода из Git...")
+        
+        # Выполняем git pull
+        result = subprocess.run(['git', 'pull', 'origin', 'main'], 
+                              capture_output=True, text=True, cwd='/opt/my_trading_bot')
+        
+        if result.returncode == 0:
+            message = (
+                "✅ КОД ОБНОВЛЕН!\n\n"
+                f"📋 Git вывод:\n{result.stdout}\n\n"
+                "🔄 Для применения изменений используйте /restart_bot"
+            )
+        else:
+            message = f"❌ Ошибка обновления:\n{result.stderr}"
+        
+        await update.message.reply_text(message)
+        
+    except Exception as e:
+        logger.error(f"Ошибка обновления кода: {e}")
+        await update.message.reply_text(f"❌ Ошибка обновления: {e}")
+
+async def system_status_command(update: Update, context: CallbackContext):
+    """
+    Команда /system_status - статус системы и процессов
+    """
+    try:
+        await update.message.reply_text("🔍 Проверка статуса системы...")
+        
+        # Проверяем процессы бота
+        ps_result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
+        bot_processes = [line for line in ps_result.stdout.split('\n') if 'bot.py' in line]
+        
+        # Проверяем Git статус
+        git_status = subprocess.run(['git', 'status', '--porcelain'], 
+                                  capture_output=True, text=True, cwd='/opt/my_trading_bot')
+        
+        git_log = subprocess.run(['git', 'log', '--oneline', '-5'], 
+                               capture_output=True, text=True, cwd='/opt/my_trading_bot')
+        
+        message = (
+            "🖥️ СТАТУС СИСТЕМЫ\n\n"
+            f"🤖 Процессы бота: {len(bot_processes)}\n"
+            f"📁 Незакоммиченных изменений: {len(git_status.stdout.strip().split()) if git_status.stdout.strip() else 0}\n\n"
+            f"📋 Последние коммиты:\n{git_log.stdout}\n\n"
+            "⚙️ Доступные команды:\n"
+            "• /update_code - обновить код\n"
+            "• /restart_bot - перезапустить бота\n"
+            "• /system_status - этот статус"
+        )
+        
+        await update.message.reply_text(message)
+        
+    except Exception as e:
+        logger.error(f"Ошибка проверки статуса: {e}")
+        await update.message.reply_text(f"❌ Ошибка статуса: {e}")
