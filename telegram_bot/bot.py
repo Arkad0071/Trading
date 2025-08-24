@@ -34,7 +34,7 @@ from positions_db import get_open_positions
 try:
     from enhanced_commands import (
         enhanced_prediction_command, train_ml_brain_command, brain_status_command,
-        enhanced_auto_trade_command, start_enhanced_monitoring_command,
+        enhanced_auto_trade_command, start_enhanced_monitoring_command, 
         stop_enhanced_monitoring_command, enhanced_monitor_callback,
         restart_bot_command, update_code_command, system_status_command
     )
@@ -88,7 +88,7 @@ async def start(update: Update, context: CallbackContext):
     enhanced_commands = ""
     
     if ENHANCED_COMMANDS_AVAILABLE:
-        enhanced_commands = "\n\n🧠 ML МОЗГ КОМАНДЫ:\n/brain_status, /train_brain, /enhanced_predict, /enhanced_auto_trade, /start_enhanced_monitor"
+        enhanced_commands = "\n\n🧠 ML МОЗГ КОМАНДЫ:\n/brain_status, /train_brain, /enhanced_predict, /enhanced_auto_trade, /start_enhanced_monitor\n\n🔧 СИСТЕМА:\n/restart_bot, /update_code, /system_status"
     
     await update.message.reply_text(
         f"🤖 Привет! Я продвинутый торговый бот с ML мозгом!\n\n"
