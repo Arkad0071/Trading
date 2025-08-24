@@ -56,6 +56,8 @@ def get_candlestick_data(
             fetch_since = batch[-1][0] + 1
         df = pd.DataFrame(all_rows, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
         df['start_at'] = pd.to_datetime(df['timestamp'], unit='ms')
+        # Устанавливаем datetime как индекс для корректной работы
+        df.set_index('start_at', inplace=True)
         logger.info(f"Получено {len(df)} строк данных для {symbol}.")
         return df
     except Exception:
@@ -100,6 +102,8 @@ def load_ohlcv_from_csv(csv_path: str) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
     if "start_at" in df.columns:
         df["start_at"] = pd.to_datetime(df["start_at"])
+        # Устанавливаем datetime как индекс для корректной работы
+        df.set_index('start_at', inplace=True)
     return df
 
 def save_ohlcv_to_csv(df: pd.DataFrame, csv_path: str) -> bool:

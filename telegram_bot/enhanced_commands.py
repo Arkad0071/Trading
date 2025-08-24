@@ -41,7 +41,20 @@ async def enhanced_prediction_command(update: Update, context: CallbackContext):
         prediction = get_enhanced_prediction(df)
         
         # Время последних данных
-        last_data_time = df.index[-1]
+        try:
+            last_data_time = df.index[-1]
+            if hasattr(last_data_time, 'strftime'):
+                time_str = last_data_time.strftime('%H:%M:%S UTC')
+            else:
+                # Если это timestamp, конвертируем в datetime
+                if isinstance(last_data_time, (int, float)):
+                    last_data_time = pd.to_datetime(last_data_time, unit='ms')
+                    time_str = last_data_time.strftime('%H:%M:%S UTC')
+                else:
+                    time_str = str(last_data_time)
+        except Exception as e:
+            time_str = "Время неизвестно"
+            logger.error(f"Ошибка получения времени данных: {e}")
         
         # Формируем ответ
         signal = prediction['signal']
@@ -86,7 +99,7 @@ async def enhanced_prediction_command(update: Update, context: CallbackContext):
             f"• Сигнал: {signal}\n"
             f"• Уверенность: {confidence:.1%}\n"
             f"• Текущая цена: ${current_price:,.2f}\n"
-            f"• Время данных: {last_data_time.strftime('%H:%M:%S UTC')}\n\n"
+            f"• Время данных: {time_str}\n\n"
             f"⚙️ Рекомендуемые параметры:\n"
             f"• Плечо: {leverage}x\n"
             f"• Размер позиции: {position_size:.6f} BTC\n"
